@@ -28,7 +28,6 @@ export type Database = {
           english_level: string | null
           general_desc_i18n: Json | null
           has_mountains: boolean | null
-          has_sea: boolean | null
           id: string
           infrastructure_data: Json | null
           kids_desc_i18n: Json | null
@@ -38,6 +37,7 @@ export type Database = {
           population: number | null
           safety_data: Json | null
           safety_index: number | null
+          sea_type: string
           social_data: Json | null
           social_desc_i18n: Json | null
           temp_summer_max: number | null
@@ -61,7 +61,6 @@ export type Database = {
           english_level?: string | null
           general_desc_i18n?: Json | null
           has_mountains?: boolean | null
-          has_sea?: boolean | null
           id?: string
           infrastructure_data?: Json | null
           kids_desc_i18n?: Json | null
@@ -71,6 +70,7 @@ export type Database = {
           population?: number | null
           safety_data?: Json | null
           safety_index?: number | null
+          sea_type?: string
           social_data?: Json | null
           social_desc_i18n?: Json | null
           temp_summer_max?: number | null
@@ -94,7 +94,6 @@ export type Database = {
           english_level?: string | null
           general_desc_i18n?: Json | null
           has_mountains?: boolean | null
-          has_sea?: boolean | null
           id?: string
           infrastructure_data?: Json | null
           kids_desc_i18n?: Json | null
@@ -104,6 +103,7 @@ export type Database = {
           population?: number | null
           safety_data?: Json | null
           safety_index?: number | null
+          sea_type?: string
           social_data?: Json | null
           social_desc_i18n?: Json | null
           temp_summer_max?: number | null
@@ -115,20 +115,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "cities_climate_type_id_fkey"
-            columns: ["climate_type_id"]
-            isOneToOne: false
-            referencedRelation: "climate_types"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cities_country_id_fkey"
-            columns: ["country_id"]
-            isOneToOne: false
-            referencedRelation: "countries"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "fk_cities_climate_type"
             columns: ["climate_type_id"]
@@ -226,13 +212,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "costs_city_id_fkey"
-            columns: ["city_id"]
-            isOneToOne: false
-            referencedRelation: "cities"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "fk_costs_city"
             columns: ["city_id"]
             isOneToOne: false
@@ -290,15 +269,7 @@ export type Database = {
           updated_at?: string | null
           usd_rate?: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "countries_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "country_politics"
-            referencedColumns: ["country_id"]
-          },
-        ]
+        Relationships: []
       }
       country_languages: {
         Row: {
@@ -323,20 +294,6 @@ export type Database = {
           language_id?: number
         }
         Relationships: [
-          {
-            foreignKeyName: "country_languages_country_id_fkey"
-            columns: ["country_id"]
-            isOneToOne: false
-            referencedRelation: "countries"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "country_languages_language_id_fkey"
-            columns: ["language_id"]
-            isOneToOne: false
-            referencedRelation: "languages"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "fk_lang_country"
             columns: ["country_id"]
@@ -454,20 +411,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "country_residency_options_country_id_fkey"
-            columns: ["country_id"]
-            isOneToOne: false
-            referencedRelation: "countries"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "country_residency_options_residency_type_id_fkey"
-            columns: ["residency_type_id"]
-            isOneToOne: false
-            referencedRelation: "residency_types"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "fk_residency_country"
             columns: ["country_id"]
             isOneToOne: false
@@ -582,13 +525,6 @@ export type Database = {
             referencedRelation: "cities"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "rent_options_city_id_fkey"
-            columns: ["city_id"]
-            isOneToOne: false
-            referencedRelation: "cities"
-            referencedColumns: ["id"]
-          },
         ]
       }
       residency_types: {
@@ -638,20 +574,6 @@ export type Database = {
           },
           {
             foreignKeyName: "fk_visa_origin"
-            columns: ["origin_country_id"]
-            isOneToOne: false
-            referencedRelation: "countries"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tourist_visas_destination_country_id_fkey"
-            columns: ["destination_country_id"]
-            isOneToOne: false
-            referencedRelation: "countries"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tourist_visas_origin_country_id_fkey"
             columns: ["origin_country_id"]
             isOneToOne: false
             referencedRelation: "countries"

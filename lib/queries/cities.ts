@@ -1,55 +1,84 @@
 import { supabase } from '@/lib/supabase'
 
+const WATER_SEA_TYPES = ['sea', 'ocean', 'lake'] as const
+
 export type CitiesFilter = {
-  climate_type_id?: number
   has_sea?: boolean
   has_mountains?: boolean
   safety_index_min?: number
   timezone_offsets?: number[]
   english_level?: string
+  temp_summer_min?: number
+  temp_summer_max?: number
+  temp_winter_min?: number
+  temp_winter_max?: number
+  budget_max?: number
+  visa_options?: string[]
+  politics_ids?: number[]
 }
 
 export async function getCities(filter: CitiesFilter = {}) {
   let query = supabase
-  .from('cities')
-  .select(`
-    id,
-    name_i18n,
-    country_id,
-    has_sea,
-    has_mountains,
-    safety_index,
-    timezone_offset,
-    english_level,
-    population,
-    climate_type_id,
-    temp_summer_max,
-    temp_winter_min,
-    climate_types!fk_cities_climate_type (
-      name_i18n
-    ),
-    countries!fk_cities_country (
-      name_i18n
-    ),
-    costs (
-      groceries_usd,
-      cafes_usd,
-      utilities_usd,
-      internet_home_usd,
-      transport_basic_usd
-    ),
-    rent_options (
-      accommodation_type,
-      bedrooms_count,
-      price_usd_min
-    )
-  `)
+    .from('cities')
+    .select(`
+      id,
+      name_i18n,
+      country_id,
+      sea_type,
+      has_mountains,
+      safety_index,
+      timezone_offset,
+      english_level,
+      population,
+      image_url,
+      temp_summer_min,
+      temp_summer_max,
+      temp_winter_min,
+      temp_winter_max,
+      countries!fk_cities_country (
+        name_i18n,
+        tourist_visas!fk_visa_destination (
+          origin_country_id,
+          visa_type,
+          allowed_days,
+          conditions_i18n
+        ),
+        country_languages (
+          is_official,
+          is_widely_spoken,
+          languages (
+            name_i18n,
+            code
+          )
+        ),
+        country_politics (
+          fh_score,
+          eiu_regime_type_id,
+          eiu_regime_types!country_politics_eiu_regime_type_id_fkey (
+            name_i18n
+          )
+        )
+      ),
+      costs (
+        groceries_usd,
+        cafes_usd,
+        utilities_usd,
+        internet_home_usd,
+        transport_basic_usd
+      ),
+      rent_options (
+        accommodation_type,
+        bedrooms_count,
+        price_usd_min,
+        price_usd_max
+      )
+    `)
 
-  if (filter.climate_type_id) {
-    query = query.eq('climate_type_id', filter.climate_type_id)
+  if (filter.has_sea === true) {
+    query = query.in('sea_type', [...WATER_SEA_TYPES])
   }
-  if (filter.has_sea !== undefined) {
-    query = query.eq('has_sea', filter.has_sea)
+  if (filter.has_sea === false) {
+    query = query.not('sea_type', 'in', `(${WATER_SEA_TYPES.join(',')})`)
   }
   if (filter.has_mountains !== undefined) {
     query = query.eq('has_mountains', filter.has_mountains)
@@ -62,6 +91,18 @@ export async function getCities(filter: CitiesFilter = {}) {
   }
   if (filter.english_level) {
     query = query.eq('english_level', filter.english_level)
+  }
+  if (filter.temp_summer_min !== undefined) {
+    query = query.gte('temp_summer_min', filter.temp_summer_min)
+  }
+  if (filter.temp_summer_max !== undefined) {
+    query = query.lte('temp_summer_max', filter.temp_summer_max)
+  }
+  if (filter.temp_winter_min !== undefined) {
+    query = query.gte('temp_winter_min', filter.temp_winter_min)
+  }
+  if (filter.temp_winter_max !== undefined) {
+    query = query.lte('temp_winter_max', filter.temp_winter_max)
   }
 
   const { data, error } = await query

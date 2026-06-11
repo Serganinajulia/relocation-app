@@ -1,20 +1,22 @@
 import { getCities } from '@/lib/queries/cities'
-import { CityCard } from '@/components/city/CityCard'
+import { CityGrid } from '@/components/city/CityGrid'
+import { PageHero } from '@/components/shared/PageHero'
 
 export default async function HomePage() {
   const cities = await getCities()
 
   return (
-    <main className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">
-        Найди свой город для релокации
-      </h1>
-
-      {/* Сетка карточек городов */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {cities.map((city) => (
-          <CityCard key={city.id} city={city} />
-        ))}
+    <main>
+      <PageHero
+        breadcrumbs={[
+          { label: 'Главная', href: '/' },
+          { label: 'Каталог городов' },
+        ]}
+        title="Каталог городов для релокации"
+        description="Сравнивай стоимость жизни, климат, безопасность и визовые условия в популярных городах для переезда. Фильтруй по бюджету и находи свой идеальный вариант."
+      />
+      <div className="container mx-auto px-4 py-8">
+        <CityGrid cities={cities} />
       </div>
     </main>
   )
