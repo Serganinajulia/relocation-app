@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import { Clock, Shield, Waves, Mountain, Sun, Snowflake, Stamp, Globe } from 'lucide-react'
+import Image from 'next/image'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 
 type I18n = { ru: string; en: string }
 
@@ -166,10 +168,13 @@ export function CityCard({ city }: Props) {
       {/* Фото + оверлей */}
       <div className="relative h-[200px] bg-porcelain shrink-0 overflow-hidden">
         {city.image_url ? (
-          <img
+          <Image
             src={city.image_url}
             alt={name}
-            className="w-full h-full object-cover"
+            fill
+            sizes="(max-width: 768px) 100vw, 50vw"
+            className="object-cover"
+            quality={75}
           />
         ) : (
           <div className="w-full h-full bg-porcelain" />
@@ -291,13 +296,17 @@ export function CityCard({ city }: Props) {
 
         {/* Безопасность */}
         <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="flex items-center gap-1.5 text-steel text-sm">
-              <Shield size={13} className="text-brand" />
-              Безопасность
-            </span>
-            <span className="text-xs text-steel">{city.safety_index}/100</span>
-          </div>
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="flex items-center gap-1.5 text-steel text-sm">
+            <Shield size={13} className="text-brand" />
+            Безопасность
+            <InfoTooltip
+              text="Индекс безопасности Numbeo — оценка уровня личной безопасности по данным пользователей."
+              link={{ label: 'Numbeo', href: 'https://www.numbeo.com/crime/' }}
+            />
+          </span>
+          <span className="text-xs text-steel">{city.safety_index}/100</span>
+        </div>
           <div className="w-full bg-porcelain rounded-full h-1">
             <div
               className={`h-1 rounded-full transition-all ${barColor(city.safety_index)}`}
@@ -312,6 +321,10 @@ export function CityCard({ city }: Props) {
               <span className="flex items-center gap-1.5 text-steel text-sm">
                 <Globe size={13} className="text-brand" />
                 Индекс свободы
+                <InfoTooltip
+                  text="Freedom House Score — международный индекс политических прав и гражданских свобод."
+                  link={{ label: 'Freedom House', href: 'https://freedomhouse.org' }}
+                />
               </span>
               <span className="text-xs text-steel">{politics.fh_score}/100</span>
             </div>
