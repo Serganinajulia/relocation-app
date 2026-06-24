@@ -535,59 +535,45 @@ export function QuickFilter() {
       </div>
       {/* Мобильная версия фильтра */}
       <div className="flex sm:hidden flex-col gap-3">
-        
-        {/* Строка 1 — Релоканты + Стиль жизни */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-          <button
-            onClick={() => setTravelersOpen(p => !p)}
-            className={pillFilled}
-          >
-            <Users size={14} className="text-brand shrink-0" />
-            <span>{travelersLabel()}</span>
-            <ChevronDown size={13} className={`text-steel transition-transform ${travelersOpen ? 'rotate-180' : ''}`} />
-          </button>
 
-          <div className="flex gap-1 p-1 border border-brand rounded-full shrink-0">
-            {LIFESTYLE_OPTIONS.map(opt => (
-              <button
-                key={opt.value}
-                onClick={() => {
-                  setLifestyle(opt.value)
-                  applyFilter({ lifestyle: opt.value })
-                }}
-                className={`px-2.5 h-7 rounded-full text-xs transition-all whitespace-nowrap ${
-                  lifestyle === opt.value
-                    ? 'bg-brand text-white font-medium'
-                    : 'text-steel hover:text-ink'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
+        {/* Строка 1 — Релоканты + Стиль жизни */}
+        <div className="flex items-end gap-3">
+          <div className="flex flex-col gap-1" ref={travelersRef}>
+            <span className="text-xs text-steel">Кто переезжает:</span>
+            <button
+              onClick={() => setTravelersOpen(p => !p)}
+              className={pillFilled}
+            >
+              <Users size={14} className="text-brand shrink-0" />
+              <span>{travelersLabel()}</span>
+              <ChevronDown size={13} className={`text-steel transition-transform ${travelersOpen ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-steel">Стиль жизни:</span>
+            <div className="flex gap-1 p-1 border border-brand rounded-full">
+              {LIFESTYLE_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => {
+                    setLifestyle(opt.value)
+                    applyFilter({ lifestyle: opt.value })
+                  }}
+                  className={`px-2.5 h-7 rounded-full text-xs transition-all whitespace-nowrap ${
+                    lifestyle === opt.value
+                      ? 'bg-brand text-white font-medium'
+                      : 'text-steel hover:text-ink'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Строка 2 — Жильё + Фильтры */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setHousingOpen(p => !p)}
-            className={`${pillFilled} flex-1`}
-          >
-            <Home size={14} className="text-brand shrink-0" />
-            <span>{housingLabel()}</span>
-            <ChevronDown size={13} className={`text-steel transition-transform ${housingOpen ? 'rotate-180' : ''}`} />
-          </button>
-
-          <button
-            onClick={() => setMobileFiltersOpen(true)}
-            className="flex items-center gap-1.5 h-9 px-4 rounded-full border border-border text-sm text-steel hover:border-brand hover:text-brand transition-colors whitespace-nowrap"
-          >
-            <Leaf size={14} />
-            Фильтры
-          </button>
-        </div>
-
-        {/* Дропдаун путешественников на мобилке */}
+        {/* Дропдаун путешественников */}
         {travelersOpen && (
           <div className="bg-white border border-border rounded-xl shadow-lg p-3">
             <div className="flex flex-col gap-2">
@@ -642,7 +628,20 @@ export function QuickFilter() {
           </div>
         )}
 
-        {/* Дропдаун жилья на мобилке */}
+        {/* Строка 2 — Тип жилья */}
+        <div className="flex flex-col gap-1" ref={housingRef}>
+          <span className="text-xs text-steel">Тип жилья:</span>
+          <button
+            onClick={() => setHousingOpen(p => !p)}
+            className={pillFilled}
+          >
+            <Home size={14} className="text-brand shrink-0" />
+            <span>{housingLabel()}</span>
+            <ChevronDown size={13} className={`text-steel transition-transform ${housingOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        {/* Дропдаун жилья */}
         {housingOpen && (
           <div className="bg-white border border-border rounded-xl shadow-lg p-3">
             <p className="text-xs text-steel mb-2">Тип жилья</p>
@@ -680,9 +679,17 @@ export function QuickFilter() {
           </div>
         )}
 
+        {/* Строка 3 — Расширенные фильтры на всю ширину */}
+        <button
+          onClick={() => setMobileFiltersOpen(true)}
+          className="w-full h-10 rounded-full border border-border text-sm text-steel hover:border-brand hover:text-brand transition-colors"
+        >
+          Расширенные фильтры
+        </button>
+
       </div>
 
-      {/* Fullscreen модал фильтров */}
+      {/* Fullscreen модал */}
       {mobileFiltersOpen && (
         <div className="fixed inset-0 bg-white z-50 flex flex-col">
           <div className="flex items-center justify-between p-4 border-b border-border">
@@ -712,7 +719,7 @@ export function QuickFilter() {
             </button>
           </div>
         </div>
-      )}      
+      )}   
     </div>
   )
 }
