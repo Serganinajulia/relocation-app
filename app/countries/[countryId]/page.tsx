@@ -1,7 +1,7 @@
 import { getCities } from '@/lib/queries/cities'
-import { CityCard } from '@/components/city/CityCard'
+import { CityGrid } from '@/components/city/CityGrid'
 
-export default async function HomePage() {
+export default async function CountryPage() {
   const cities = await getCities()
 
   return (
@@ -9,12 +9,7 @@ export default async function HomePage() {
       <h1 className="text-3xl font-bold mb-8">
         Найди свой город для релокации
       </h1>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {cities.map((city) => (
-          <CityCard key={city.id} city={city} />
-        ))}
-      </div>
+      <CityGrid cities={cities} />
     </main>
   )
 }
