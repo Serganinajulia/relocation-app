@@ -3,6 +3,8 @@ import { CityGrid } from '@/components/city/CityGrid'
 import { PageHero } from '@/components/shared/PageHero'
 import { QuickFilter } from '@/components/filters/QuickFilter'
 
+import { Suspense } from 'react'
+
 export default async function HomePage() {
   const cities = await getCities()
 
@@ -16,9 +18,13 @@ export default async function HomePage() {
         title="Каталог городов для релокации"
         description="Сравнивай стоимость жизни, климат, безопасность и визовые условия в популярных городах для переезда. Фильтруй по бюджету и находи свой идеальный вариант."
       />
-      <QuickFilter />
+      <Suspense fallback={null}>
+        <QuickFilter />
+      </Suspense>
       <div className="container mx-auto px-4 py-8">
-        <CityGrid cities={cities} />
+        <Suspense fallback={null}>
+          <CityGrid cities={cities} />
+        </Suspense>
       </div>
     </main>
   )
