@@ -37,6 +37,9 @@ export async function getCities(filter: CitiesFilter = {}) {
       temp_winter_max,
       countries!fk_cities_country (
         name_i18n,
+        healthcare_access,
+        school_is_free,
+        kindergarten_is_free,
         tourist_visas!fk_visa_destination (
           origin_country_id,
           visa_type,
@@ -62,7 +65,19 @@ export async function getCities(filter: CitiesFilter = {}) {
       costs (
         groceries_usd,
         cafes_usd,
-        internet_home_usd
+        internet_home_usd,
+        mobile_plan_usd,
+        transport_monthly_pass_usd,
+        transport_single_ticket_usd,
+        taxi_ride_avg_usd,
+        beauty_base_index_usd,
+        fitness_usd,
+        coworking_usd,
+        insurance_private_usd,
+        kindergarten_usd,
+        school_usd,
+        kids_club_activity_usd,
+        baby_supplies_usd
       ),
       rent_options (
         accommodation_type,

@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Clock, Shield, Waves, Mountain, Sun, Snowflake, Stamp, Globe } from 'lucide-react'
 import Image from 'next/image'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
-import { calcGroceriesMultiplier } from '@/lib/calc/formulas'
+import { calcTotal, type LifeStyle } from '@/lib/calc/formulas'
 
 type I18n = { ru: string; en: string }
 
@@ -23,6 +23,9 @@ type City = {
   temp_winter_max: number | null
   countries: {
     name_i18n: unknown
+    healthcare_access: string | null
+    school_is_free: boolean | null
+    kindergarten_is_free: boolean | null
     country_politics: {
       fh_score: number | null
       eiu_regime_type_id: number | null
@@ -44,7 +47,18 @@ type City = {
     groceries_usd: number | null
     cafes_usd: number | null
     internet_home_usd: number | null
-    transport_basic_usd: number | null
+    mobile_plan_usd: number | null
+    transport_monthly_pass_usd: number | null
+    transport_single_ticket_usd: number | null
+    taxi_ride_avg_usd: number | null
+    beauty_base_index_usd: number | null
+    fitness_usd: number | null
+    coworking_usd: number | null
+    insurance_private_usd: number | null
+    kindergarten_usd: number | null
+    school_usd: number | null
+    kids_club_activity_usd: number | null
+    baby_supplies_usd: number | null
   }[]
   rent_options: {
     accommodation_type: string | null
@@ -62,56 +76,10 @@ type Props = {
   bedrooms: number | null
   adults: number
   children: number
-}
-
-function calcMinCost(
-  costs: City['costs'],
-  rentOptions: City['rent_options'],
-  housingType: string,
-  bedrooms: number | null,
-  adults: number,
-  children: number
-): number | null {
-  if (!costs?.length) return null
-  const c = costs[0]
-
-  // если bedrooms выбран — берём коммуналку от выбранного жилья
-  // если дефолт (null) — от студии или мин записи
-  const entry = bedrooms !== null
-    ? rentOptions?.find(r => r.accommodation_type === housingType && r.bedrooms_count === bedrooms)
-    : (rentOptions?.find(r => r.accommodation_type === housingType && r.bedrooms_count === 0) ??
-       rentOptions?.find(r => r.accommodation_type === housingType && r.bedrooms_count === 1))
-
-  const utilities = entry?.utilities_usd_min ?? 0
-  const multiplier = calcGroceriesMultiplier(adults, children)
-  return Math.round((c.groceries_usd ?? 0) * multiplier + (c.internet_home_usd ?? 0) + utilities)
-}
-
-function getMinRent(
-  rentOptions: City['rent_options'],
-  housingType: string,
-  bedrooms: number | null
-): number | null {
-  if (bedrooms !== null) {
-    return rentOptions?.find(r => r.accommodation_type === housingType && r.bedrooms_count === bedrooms)?.price_usd_min ?? null
-  }
-  // дефолт — студия или мин запись
-  return (
-    rentOptions?.find(r => r.accommodation_type === housingType && r.bedrooms_count === 0)?.price_usd_min ??
-    rentOptions?.find(r => r.accommodation_type === housingType && r.bedrooms_count === 1)?.price_usd_min ??
-    null
-  )
-}
-
-function getMaxRent(
-  rentOptions: City['rent_options'],
-  housingType: string,
-  bedrooms: number | null
-): number | null {
-  if (bedrooms !== null) {
-    return rentOptions?.find(r => r.accommodation_type === housingType && r.bedrooms_count === bedrooms)?.price_usd_max ?? null
-  }
-  return null // дефолт — только мин студии, без диапазона
+  lifestyle: LifeStyle
+  hasBaby: boolean
+  kidsInKindergarten: number
+  kidsInSchool: number
 }
 
 function countryFlag(countryId: string | null): string {
@@ -192,32 +160,64 @@ function getCurrentTime(offset: number | null): string {
   return local.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 }
 
-export function CityCard({ city, housingType, bedrooms, adults, children }: Props) {
+export function CityCard({ city, housingType, bedrooms, adults, children, lifestyle, hasBaby, kidsInKindergarten, kidsInSchool }: Props) {
   const name = (city.name_i18n as I18n)?.ru ?? 'Без названия'
   const countryName = (city.countries?.name_i18n as I18n)?.ru ?? ''
   const flag = countryFlag(city.country_id)
-  const minCost = calcMinCost(city.costs, city.rent_options, housingType, bedrooms, adults, children)
-  const minRent = getMinRent(city.rent_options, housingType, bedrooms)
-  const maxRent = getMaxRent(city.rent_options, housingType, bedrooms)
   const tz = city.timezone_offset
   const tzLabel = tz != null ? `GMT${tz >= 0 ? '+' : ''}${tz}` : '—'
   const currentTime = getCurrentTime(tz)
   const sea = seaLabel(city.sea_type)
   const english = englishBadge(city.english_level)
-
   const politics = city.countries?.country_politics
   const regime = regimeBadge(politics?.eiu_regime_type_id ?? null)
   const visa = visaLabel(city.countries?.tourist_visas ?? null)
   const regimeName = (politics?.eiu_regime_types?.name_i18n as I18n)?.ru ?? null
-
   const languages = city.countries?.country_languages ?? []
   const officialLangs = languages.filter(l => l.is_official)
   const shownLangs = officialLangs.slice(0, 2)
   const extraLangs = officialLangs.length - 2
 
-  console.log('housingType:', housingType, 'bedrooms:', bedrooms, 'adults:', adults, 'children:', children)
-  console.log('rent_options:', city.rent_options)
-  console.log('minCost:', minCost, 'minRent:', minRent)
+  const costs = city.costs?.[0]
+  const rentEntry = bedrooms !== null
+    ? city.rent_options?.find(r => r.accommodation_type === housingType && r.bedrooms_count === bedrooms)
+    : (city.rent_options?.find(r => r.accommodation_type === housingType && r.bedrooms_count === 0) ??
+       city.rent_options?.find(r => r.accommodation_type === housingType && r.bedrooms_count === 1))
+
+  const result = costs && rentEntry ? calcTotal({
+    adults,
+    children,
+    has_baby: hasBaby,
+    kids_in_kindergarten: kidsInKindergarten,
+    kids_in_school: kidsInSchool,
+    lifestyle,
+    price_usd_min: rentEntry.price_usd_min ?? 0,
+    price_usd_max: rentEntry.price_usd_max ?? 0,
+    utilities_usd_min: rentEntry.utilities_usd_min ?? 0,
+    groceries_usd: costs.groceries_usd ?? 0,
+    internet_home_usd: costs.internet_home_usd ?? 0,
+    mobile_plan_usd: costs.mobile_plan_usd ?? 0,
+    transport_monthly_pass_usd: costs.transport_monthly_pass_usd ?? 0,
+    transport_single_ticket_usd: costs.transport_single_ticket_usd ?? 0,
+    taxi_ride_avg_usd: costs.taxi_ride_avg_usd ?? 0,
+    cafes_usd: costs.cafes_usd ?? 0,
+    beauty_base_index_usd: costs.beauty_base_index_usd ?? 0,
+    fitness_usd: costs.fitness_usd ?? 0,
+    coworking_usd: costs.coworking_usd ?? 0,
+    insurance_private_usd: costs.insurance_private_usd ?? 0,
+    kindergarten_usd: costs.kindergarten_usd ?? 0,
+    school_usd: costs.school_usd ?? 0,
+    kids_club_activity_usd: costs.kids_club_activity_usd ?? 0,
+    baby_supplies_usd: costs.baby_supplies_usd ?? 0,
+    healthcare_access: (city.countries?.healthcare_access ?? 'paid') as 'free' | 'emergency_only' | 'paid',
+    kindergarten_is_free: city.countries?.kindergarten_is_free ?? false,
+    school_is_free: city.countries?.school_is_free ?? false,
+  }) : null
+
+  const lifeCost = result ? result.total - result.rent : null
+  const minRent = rentEntry?.price_usd_min ?? null
+  const maxRent = rentEntry?.price_usd_max ?? null
+  const totalMin = lifeCost && minRent ? lifeCost + minRent : null
 
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
@@ -255,21 +255,19 @@ export function CityCard({ city, housingType, bedrooms, adults, children }: Prop
       <div className="p-4 flex flex-col gap-3 flex-1">
 
         {/* Бюджет */}
-        {(minCost || minRent) && (
+        {totalMin && (
           <div>
-            {minCost && minRent && (
-              <p className="text-xl font-semibold text-ink">
-                Бюджет: от ${minCost + minRent} / месяц
-              </p>
-            )}
+            <p className="text-xl font-semibold text-ink">
+              Бюджет: от ${totalMin} / месяц
+            </p>
             <div className="flex gap-3 text-sm mt-1.5">
-              {minCost && (
+              {lifeCost && (
                 <div className="bg-porcelain rounded-lg px-3 py-2 flex-1">
                   <span className="text-xs text-steel mb-0.5 flex items-center gap-1">
                     Стоимость жизни
-                    <InfoTooltip text="Используйте фильтры для более точного расчета" />
+                    <InfoTooltip text="Продукты, интернет, транспорт, кафе и другие расходы по выбранному стилю жизни" />
                   </span>
-                  <span className="font-semibold text-ink">от ${minCost}</span>
+                  <span className="font-semibold text-ink">от ${lifeCost}</span>
                 </div>
               )}
               {minRent && (
@@ -279,7 +277,7 @@ export function CityCard({ city, housingType, bedrooms, adults, children }: Prop
                     <InfoTooltip text="Выберите тип жилья в фильтре для более точного расчета" />
                   </span>
                   <span className="font-semibold text-ink">
-                    от ${minRent}{maxRent ? `–$${maxRent}` : ''}
+                    ~ ${result.rent}
                   </span>
                 </div>
               )}

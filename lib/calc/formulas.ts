@@ -283,13 +283,15 @@ export function calcInsurance(
 // kids_in_kindergarten — счётчик из фильтра пользователя
 
 export function calcKindergarten(
-  kindergarten_usd: number,
-  kindergarten_is_free: boolean,
-  kids_in_kindergarten: number
-): number {
-  if (kindergarten_is_free) return 0
-  return kindergarten_usd * kids_in_kindergarten
-}
+    kindergarten_usd: number,
+    kindergarten_is_free: boolean,
+    kids_in_kindergarten: number,
+    lifestyle: LifeStyle
+  ): number {
+    if (lifestyle === 'economy') return 0
+    if (kindergarten_is_free) return 0
+    return kindergarten_usd * kids_in_kindergarten
+  }
 
 // ------------------------------------------------------------
 // 13. ШКОЛА
@@ -299,13 +301,15 @@ export function calcKindergarten(
 // kids_in_school — счётчик из фильтра пользователя
 
 export function calcSchool(
-  school_usd: number,
-  school_is_free: boolean,
-  kids_in_school: number
-): number {
-  if (school_is_free) return 0
-  return school_usd * kids_in_school
-}
+    school_usd: number,
+    school_is_free: boolean,
+    kids_in_school: number,
+    lifestyle: LifeStyle
+  ): number {
+    if (lifestyle === 'economy') return 0
+    if (school_is_free) return 0
+    return school_usd * kids_in_school
+  }
 
 // ------------------------------------------------------------
 // 14. КРУЖКИ И СЕКЦИИ
@@ -416,10 +420,11 @@ export function calcTotal(input: CalcInput): {
   const fitness     = calcFitness(input.fitness_usd, input.adults, input.lifestyle)
   const coworking   = calcCoworking(input.coworking_usd, input.lifestyle)
   const insurance   = calcInsurance(input.insurance_private_usd, input.healthcare_access, input.adults, input.children)
-  const kindergarten = calcKindergarten(input.kindergarten_usd, input.kindergarten_is_free, input.kids_in_kindergarten)
-  const school      = calcSchool(input.school_usd, input.school_is_free, input.kids_in_school)
+  const kindergarten = calcKindergarten(input.kindergarten_usd, input.kindergarten_is_free, input.kids_in_kindergarten, input.lifestyle)
+  const school = calcSchool(input.school_usd, input.school_is_free, input.kids_in_school, input.lifestyle)
   const clubs       = calcClubs(input.kids_club_activity_usd, input.children, input.lifestyle)
   const baby        = calcBaby(input.baby_supplies_usd, input.has_baby)
+
 
   const total = groceries + rent + utilities + internet + transport
     + taxi + cafe + beauty + fitness + coworking

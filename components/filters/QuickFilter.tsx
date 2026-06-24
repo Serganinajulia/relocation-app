@@ -5,10 +5,19 @@ import { useRouter } from 'next/navigation'
 import { useSearchParams } from 'next/navigation'
 import { Users, Home, Leaf, Stamp, ChevronDown, Plus, Minus, RotateCcw } from 'lucide-react'
 
+type AgeGroup = 'baby' | 'toddler' | 'school'
+
 type Traveler = {
   type: 'adult' | 'child'
   citizenship: string
+  ageGroup?: AgeGroup  // только для детей
 }
+
+const AGE_GROUPS: { value: AgeGroup; label: string }[] = [
+  { value: 'baby', label: 'До 2 лет' },
+  { value: 'toddler', label: '2–6 лет' },
+  { value: 'school', label: '7–18 лет' },
+]
 
 const CITIZENSHIPS = [
   { value: 'RU', label: 'Россия', flag: '🇷🇺' },
@@ -47,6 +56,11 @@ const BEDROOM_OPTIONS_HOUSE = [
   { value: '2', label: '2+' },
   { value: '3', label: '3+' },
 ]
+const LIFESTYLE_OPTIONS = [
+  { value: 'economy', label: 'Эконом' },
+  { value: 'comfort', label: 'Базовый' },
+  { value: 'comfort_plus', label: 'Комфорт+' },
+]
 
 export function QuickFilter() {
   const router = useRouter()
@@ -60,6 +74,9 @@ export function QuickFilter() {
     searchParams.get('climate')?.split(',').filter(Boolean) ?? []
   )
   const [conditionsSelected, setConditionsSelected] = useState<string[]>([])
+  const [lifestyle, setLifestyle] = useState(
+    searchParams.get('lifestyle') ?? 'comfort'
+  )
   const [travelers, setTravelers] = useState<Traveler[]>(() => {
     const adults = parseInt(searchParams.get('adults') ?? '1')
     const children = parseInt(searchParams.get('children') ?? '0')
@@ -78,6 +95,7 @@ export function QuickFilter() {
   const [housingOpen, setHousingOpen] = useState(false)
   const [climateOpen, setClimateOpen] = useState(false)
   const [conditionsOpen, setConditionsOpen] = useState(false)
+  const [agePickerOpen, setAgePickerOpen] = useState(false)
 
   const travelersRef = useRef<HTMLDivElement>(null)
   const housingRef = useRef<HTMLDivElement>(null)
@@ -101,6 +119,7 @@ export function QuickFilter() {
     bedrooms: string
     climateSelected: string[]
     conditionsSelected: string[]
+    lifestyle?: string
     travelers: Traveler[]
   }> = {}) => {
     const b = overrides.budget ?? budget
@@ -109,24 +128,44 @@ export function QuickFilter() {
     const cl = overrides.climateSelected ?? climateSelected
     const cond = overrides.conditionsSelected ?? conditionsSelected
     const tr = overrides.travelers ?? travelers
+    const ls = overrides.lifestyle ?? lifestyle
 
     const params = new URLSearchParams()
     const budgetNum = parseInt(b)
     if (!isNaN(budgetNum) && budgetNum > 0) params.set('budget', String(budgetNum))
     params.set('housing_type', ht)
     params.set('bedrooms', bd)
+    params.set('lifestyle', ls)
     if (cl.length) params.set('climate', cl.join(','))
     cond.forEach(c => params.set(c, '1'))
     const citizenships = [...new Set(tr.map(t => t.citizenship))]
     params.set('citizenships', citizenships.join(','))
     params.set('adults', String(tr.filter(t => t.type === 'adult').length))
-    params.set('children', String(tr.filter(t => t.type === 'child').length))
+
+    const childrenList = tr.filter(t => t.type === 'child')
+    params.set('children', String(childrenList.length))
+    params.set('has_baby', String(childrenList.some(c => c.ageGroup === 'baby')))
+    params.set('kids_in_kindergarten', String(childrenList.filter(c => c.ageGroup === 'toddler').length))
+    params.set('kids_in_school', String(childrenList.filter(c => c.ageGroup === 'school').length))
+
     router.replace(`/?${params.toString()}`)
   }, [budget, housingType, bedrooms, climateSelected, conditionsSelected, travelers, router])
 
   function addTraveler(type: 'adult' | 'child') {
-    const next = [...travelers, { type, citizenship: 'RU' }]
+    if (type === 'adult') {
+      const next = [...travelers, { type: 'adult', citizenship: 'RU' }]
+      setTravelers(next)
+      applyFilter({ travelers: next })
+    } else {
+      // для ребёнка сначала открываем выбор возраста
+      setAgePickerOpen(true)
+    }
+  }
+  
+  function selectAgeGroup(ageGroup: AgeGroup) {
+    const next = [...travelers, { type: 'child' as const, citizenship: 'RU', ageGroup }]
     setTravelers(next)
+    setAgePickerOpen(false)
     applyFilter({ travelers: next })
   }
 
@@ -191,6 +230,7 @@ export function QuickFilter() {
     setClimateSelected([])
     setConditionsSelected([])
     setTravelers([{ type: 'adult', citizenship: 'RU' }])
+    setLifestyle('comfort')
     router.replace('/')
   }
   function travelersLabel() {
@@ -202,8 +242,7 @@ export function QuickFilter() {
       parts.push(`${adults.length} взр. ${flags}`)
     }
     if (children.length) {
-      const flags = children.map(t => CITIZENSHIPS.find(c => c.value === t.citizenship)?.flag ?? '').join(' ')
-      parts.push(`${children.length} реб. ${flags}`)
+      parts.push(`${children.length} реб.`)
     }
     return parts.join(' · ')
   }
@@ -242,29 +281,47 @@ export function QuickFilter() {
               {travelersOpen && (
                 <div className="absolute top-full left-0 mt-2 bg-white border border-border rounded-xl shadow-lg p-3 z-50 min-w-[240px]">
                   <div className="flex flex-col gap-2">
-                    {travelers.map((t, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <span className="text-xs text-steel w-12 shrink-0">
-                          {t.type === 'adult' ? 'Взр.' : 'Реб.'}
-                        </span>
-                        <select
-                          value={t.citizenship}
-                          onChange={e => updateCitizenship(i, e.target.value)}
-                          className="flex-1 h-8 px-2 rounded-lg border border-border text-xs text-ink outline-none focus:border-brand"
-                        >
-                          {CITIZENSHIPS.map(c => (
-                            <option key={c.value} value={c.value}>{c.flag} {c.label}</option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={() => removeTraveler(i)}
-                          disabled={travelers.length === 1}
-                          className="text-steel hover:text-warning disabled:opacity-30 transition-colors"
-                        >
-                          <Minus size={14} />
-                        </button>
+                  {travelers.map((t, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="text-xs text-steel w-20 shrink-0">
+                        {t.type === 'adult' ? 'Взр.' : AGE_GROUPS.find(a => a.value === t.ageGroup)?.label ?? 'Реб.'}
+                      </span>
+                      <select
+                        value={t.citizenship}
+                        onChange={e => updateCitizenship(i, e.target.value)}
+                        className="flex-1 h-8 px-2 rounded-lg border border-border text-xs text-ink outline-none focus:border-brand"
+                      >
+                        {CITIZENSHIPS.map(c => (
+                          <option key={c.value} value={c.value}>{c.flag} {c.label}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => removeTraveler(i)}
+                        disabled={travelers.length === 1}
+                        className="text-steel hover:text-warning disabled:opacity-30 transition-colors"
+                      >
+                        <Minus size={14} />
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* Выбор возраста */}
+                  {agePickerOpen && (
+                    <div className="mt-2 pt-2 border-t border-border">
+                      <p className="text-xs text-steel mb-2">Возраст ребёнка:</p>
+                      <div className="flex flex-col gap-1">
+                        {AGE_GROUPS.map(ag => (
+                          <button
+                            key={ag.value}
+                            onClick={() => selectAgeGroup(ag.value)}
+                            className="text-left px-3 h-8 rounded-lg text-sm border border-border text-ink hover:border-brand hover:text-brand transition-all"
+                          >
+                            {ag.label}
+                          </button>
+                        ))}
                       </div>
-                    ))}
+                    </div>
+                  )}
                   </div>
                   <div className="flex gap-3 mt-3 pt-3 border-t border-border">
                     <button onClick={() => addTraveler('adult')} className="flex items-center gap-1 text-xs text-brand hover:text-positive transition-colors">
@@ -276,35 +333,6 @@ export function QuickFilter() {
                   </div>
                 </div>
               )}
-            </div>
-          </div>
-
-          {/* Блок 2 — Бюджет */}
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-steel">Ваш бюджет на всех:</span>
-            <div className={`${pillFilled} gap-1.5`}>
-              <button
-                onClick={() => handleBudgetStep(-50)}
-                className="text-steel hover:text-brand transition-colors"
-              >
-                <Minus size={14} />
-              </button>
-              <span className="text-steel text-sm shrink-0">до</span>
-              <input
-                type="text"
-                value={budget}
-                onChange={e => handleBudgetChange(e.target.value.replace(/[^0-9]/g, ''))}
-                onBlur={handleBudgetBlur}
-                className="w-16 text-sm font-medium text-ink outline-none text-center bg-transparent"
-                placeholder="1000"
-              />
-              <span className="text-steel text-sm shrink-0">$/мес</span>
-              <button
-                onClick={() => handleBudgetStep(50)}
-                className="text-steel hover:text-brand transition-colors"
-              >
-                <Plus size={14} />
-              </button>
             </div>
           </div>
 
@@ -359,6 +387,28 @@ export function QuickFilter() {
             </div>
           </div>
 
+          {/* Блок 2 — Стиль жизни */}
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-steel">Стиль жизни:</span>
+            <div className="flex gap-1 p-1 border border-brand rounded-full">
+              {LIFESTYLE_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => {
+                    setLifestyle(opt.value)
+                    applyFilter({ lifestyle: opt.value })
+                  }}
+                  className={`px-3 h-7 rounded-full text-sm transition-all whitespace-nowrap ${
+                    lifestyle === opt.value
+                      ? 'bg-brand hover:bg-positive text-white font-medium'
+                      : 'text-steel hover:text-ink'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
           {/* Разделитель */}
           <div className="h-9 w-px bg-border self-end shrink-0" />
 
@@ -440,16 +490,46 @@ export function QuickFilter() {
             </div>
           </div>
           {/* Сброс */}
-          <div className="flex flex-col gap-1 lg:ml-auto">
-            <span className="text-xs text-steel opacity-0 pointer-events-none">-</span>
-            <button
-              onClick={handleReset}
-              className="flex items-center gap-1.5 h-9 px-4 rounded-full border border-border text-sm text-steel hover:text-warning hover:border-warning transition-colors whitespace-nowrap"
-            >
-              <RotateCcw size={13} />
-              Сбросить
-            </button>
-          </div>
+            <div className="flex flex-col gap-1 lg:ml-auto">
+              <span className="text-xs text-steel opacity-0 pointer-events-none">-</span>
+              <button
+                onClick={handleReset}
+                className="flex items-center gap-1.5 h-9 px-4 rounded-full border border-border text-sm text-steel hover:text-warning hover:border-warning transition-colors whitespace-nowrap"
+              >
+                <RotateCcw size={13} />
+                Сбросить
+              </button>
+            </div>
+        </div>
+        <div className="hidden sm:flex flex-wrap items-end gap-3">
+          {/* Блок 2 — Бюджет 
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-steel">Ваш бюджет на всех:</span>
+            <div className={`${pillFilled} gap-1.5`}>
+              <button
+                onClick={() => handleBudgetStep(-50)}
+                className="text-steel hover:text-brand transition-colors"
+              >
+                <Minus size={14} />
+              </button>
+              <span className="text-steel text-sm shrink-0">до</span>
+              <input
+                type="text"
+                value={budget}
+                onChange={e => handleBudgetChange(e.target.value.replace(/[^0-9]/g, ''))}
+                onBlur={handleBudgetBlur}
+                className="w-16 text-sm font-medium text-ink outline-none text-center bg-transparent"
+                placeholder="1000"
+              />
+              <span className="text-steel text-sm shrink-0">$/мес</span>
+              <button
+                onClick={() => handleBudgetStep(50)}
+                className="text-steel hover:text-brand transition-colors"
+              >
+                <Plus size={14} />
+              </button>
+            </div>
+          </div>*/}
         </div>
       </div>
     </div>

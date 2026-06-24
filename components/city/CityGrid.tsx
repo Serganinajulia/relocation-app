@@ -17,6 +17,10 @@ export function CityGrid({ cities }: Props) {
   const bedrooms = searchParams.get('bedrooms') ? parseInt(searchParams.get('bedrooms')!) : null
   const adults = parseInt(searchParams.get('adults') ?? '1')
   const children = parseInt(searchParams.get('children') ?? '0')
+  const lifestyle = (searchParams.get('lifestyle') ?? 'comfort') as 'economy' | 'comfort' | 'comfort_plus'
+  const hasBaby = searchParams.get('has_baby') === 'true'
+  const kidsInKindergarten = parseInt(searchParams.get('kids_in_kindergarten') ?? '0')
+  const kidsInSchool = parseInt(searchParams.get('kids_in_school') ?? '0')
 
   return (
     <div className="flex gap-6 items-start">
@@ -39,6 +43,10 @@ export function CityGrid({ cities }: Props) {
             bedrooms={bedrooms}
             adults={adults}
             children={children}
+            lifestyle={lifestyle}
+            hasBaby={hasBaby}
+            kidsInKindergarten={kidsInKindergarten}
+            kidsInSchool={kidsInSchool}
           />
         ))}
       </div>
