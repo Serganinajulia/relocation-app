@@ -103,6 +103,12 @@ export function QuickFilter() {
   const climateRef = useRef<HTMLDivElement>(null)
   const conditionsRef = useRef<HTMLDivElement>(null)
 
+  // Локальный стейт для мобильного фильтра
+  const [mobileTravelers, setMobileTravelers] = useState<Traveler[]>(travelers)
+  const [mobileHousingType, setMobileHousingType] = useState(housingType)
+  const [mobileBedrooms, setMobileBedrooms] = useState(bedrooms)
+  const [mobileLifestyle, setMobileLifestyle] = useState(lifestyle)
+
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (travelersRef.current && !travelersRef.current.contains(e.target as Node)) setTravelersOpen(false)
@@ -234,6 +240,27 @@ export function QuickFilter() {
     setLifestyle('comfort')
     router.replace('/')
   }
+
+  function applyMobileFilter() {
+    setTravelers(mobileTravelers)
+    setHousingType(mobileHousingType)
+    setBedrooms(mobileBedrooms)
+    setLifestyle(mobileLifestyle)
+    applyFilter({
+      travelers: mobileTravelers,
+      housingType: mobileHousingType,
+      bedrooms: mobileBedrooms,
+      lifestyle: mobileLifestyle,
+    })
+  }
+  
+  function resetMobileFilter() {
+    setMobileTravelers([{ type: 'adult', citizenship: 'RU' }])
+    setMobileHousingType('apartment')
+    setMobileBedrooms('0')
+    setMobileLifestyle('comfort')
+  }
+
   function travelersLabel() {
     const adults = travelers.filter(t => t.type === 'adult')
     const children = travelers.filter(t => t.type === 'child')
@@ -533,170 +560,190 @@ export function QuickFilter() {
           </div>*/}
         </div>
       </div>
-      {/* Мобильная версия фильтра */}
-      <div className="flex sm:hidden flex-col gap-3 bg-porcelain px-4 py-5">
+{/* Мобильная версия фильтра */}
+<div className="flex sm:hidden flex-col gap-3 bg-porcelain px-4 py-5">
 
-        {/* Кто переезжает */}
-        <div>
-          <button
-            onClick={() => setTravelersOpen(p => !p)}
-            className="flex items-center justify-between w-full px-4 py-3.5 bg-white border rounded-2xl shadow-sm border-brand transition-colors"
-          >
-            <span className="text-xs text-steel">Кто переезжает</span>
-            <span className="text-sm font-medium text-ink">{travelersLabel()}</span>
-          </button>
+  {/* Кто переезжает */}
+  <div ref={travelersRef}>
+    <button
+      onClick={() => setTravelersOpen(p => !p)}
+      className="flex items-center justify-between w-full px-4 py-3.5 bg-white border border-border rounded-2xl shadow-sm hover:border-brand transition-colors"
+    >
+      <span className="text-xs text-steel">Кто переезжает</span>
+      <span className="text-sm font-medium text-ink">
+        {mobileTravelers.filter(t => t.type === 'adult').length} взр.
+        {mobileTravelers.filter(t => t.type === 'child').length > 0 && ` · ${mobileTravelers.filter(t => t.type === 'child').length} реб.`}
+        {' '}{[...new Set(mobileTravelers.map(t => CITIZENSHIPS.find(c => c.value === t.citizenship)?.flag ?? ''))].join(' ')}
+      </span>
+    </button>
 
-          {travelersOpen && (
-            <div className="mt-2 bg-white border border-brand rounded-2xl shadow-sm p-4">
-              <div className="flex flex-col gap-2">
-                {travelers.map((t, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <span className="text-xs text-steel w-20 shrink-0">
-                      {t.type === 'adult' ? 'Взр.' : AGE_GROUPS.find(a => a.value === t.ageGroup)?.label ?? 'Реб.'}
-                    </span>
-                    <select
-                      value={t.citizenship}
-                      onChange={e => updateCitizenship(i, e.target.value)}
-                      className="flex-1 h-8 px-2 rounded-lg border border-border text-xs text-ink outline-none focus:border-brand"
-                    >
-                      {CITIZENSHIPS.map(c => (
-                        <option key={c.value} value={c.value}>{c.flag} {c.label}</option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={() => removeTraveler(i)}
-                      disabled={travelers.length === 1}
-                      className="text-steel hover:text-warning disabled:opacity-30 transition-colors"
-                    >
-                      <Minus size={14} />
-                    </button>
-                  </div>
-                ))}
-                {agePickerOpen && (
-                  <div className="mt-2 pt-2 border-t border-border">
-                    <p className="text-xs text-steel mb-2">Возраст ребёнка:</p>
-                    <div className="flex flex-col gap-1">
-                      {AGE_GROUPS.map(ag => (
-                        <button
-                          key={ag.value}
-                          onClick={() => selectAgeGroup(ag.value)}
-                          className="text-left px-3 h-8 rounded-lg text-sm border border-border text-ink hover:border-brand hover:text-brand transition-all"
-                        >
-                          {ag.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="flex gap-3 mt-3 pt-3 border-t border-border">
-                <button onClick={() => addTraveler('adult')} className="flex items-center gap-1 text-xs text-brand hover:text-positive transition-colors">
-                  <Plus size={12} /> Взрослый
-                </button>
-                <button onClick={() => addTraveler('child')} className="flex items-center gap-1 text-xs text-brand hover:text-positive transition-colors">
-                  <Plus size={12} /> Ребёнок
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Тип жилья */}
-        <div>
-          <button
-            onClick={() => setHousingOpen(p => !p)}
-            className="flex items-center justify-between w-full px-4 py-3.5 bg-white border border-brand rounded-2xl shadow-sm hover:border-brand transition-colors"
-          >
-            <span className="text-xs text-steel">Тип жилья</span>
-            <span className="text-sm font-medium text-ink">{housingLabel()}</span>
-          </button>
-
-          {housingOpen && (
-            <div className="mt-2 bg-white border border-border rounded-2xl shadow-sm p-4">
-              <p className="text-xs text-steel mb-2">Тип жилья</p>
-              <div className="flex gap-2 mb-3">
-                {HOUSING_TYPES.map(h => (
-                  <button
-                    key={h.value}
-                    onClick={() => handleHousingType(h.value)}
-                    className={`flex-1 h-9 rounded-xl text-sm border transition-all ${
-                      housingType === h.value
-                        ? 'bg-brand border-brand text-white'
-                        : 'border-border text-ink hover:border-brand hover:text-brand'
-                    }`}
-                  >
-                    {h.label}
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-steel mb-2">Спальни</p>
-              <div className="flex gap-2">
-                {bedroomOptions.map(b => (
-                  <button
-                    key={b.value}
-                    onClick={() => handleBedroomsChange(b.value)}
-                    className={`flex-1 h-9 rounded-xl text-sm border transition-all ${
-                      bedrooms === b.value
-                        ? 'bg-brand border-brand text-white'
-                        : 'border-border text-ink hover:border-brand hover:text-brand'
-                    }`}
-                  >
-                    {b.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Стиль жизни */}
-        <div className="flex items-center justify-between px-4 py-3.5 bg-white border border-brand rounded-2xl shadow-sm">
-          <span className="text-xs text-steel shrink-0">Стиль жизни</span>
-          <div className="flex gap-1 p-1 border border-brand rounded-full">
-            {LIFESTYLE_OPTIONS.map(opt => (
-              <button
-                key={opt.value}
-                onClick={() => {
-                  setLifestyle(opt.value)
-                  applyFilter({ lifestyle: opt.value })
-                }}
-                className={`px-2.5 h-7 rounded-full text-xs transition-all whitespace-nowrap ${
-                  lifestyle === opt.value
-                    ? 'bg-brand text-white font-medium'
-                    : 'hover:text-ink'
-                }`}
+    {travelersOpen && (
+      <div className="mt-2 bg-white border border-border rounded-2xl shadow-sm p-4">
+        <div className="flex flex-col gap-2">
+          {mobileTravelers.map((t, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span className="text-xs text-steel w-20 shrink-0">
+                {t.type === 'adult' ? 'Взр.' : AGE_GROUPS.find(a => a.value === t.ageGroup)?.label ?? 'Реб.'}
+              </span>
+              <select
+                value={t.citizenship}
+                onChange={e => setMobileTravelers(prev => prev.map((tr, idx) => idx === i ? { ...tr, citizenship: e.target.value } : tr))}
+                className="flex-1 h-8 px-2 rounded-lg border border-border text-xs text-ink outline-none focus:border-brand"
               >
-                {opt.label}
+                {CITIZENSHIPS.map(c => (
+                  <option key={c.value} value={c.value}>{c.flag} {c.label}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => {
+                  if (mobileTravelers.length === 1) return
+                  setMobileTravelers(prev => prev.filter((_, idx) => idx !== i))
+                }}
+                disabled={mobileTravelers.length === 1}
+                className="text-steel hover:text-warning disabled:opacity-30 transition-colors"
+              >
+                <Minus size={14} />
               </button>
-            ))}
-          </div>
+            </div>
+          ))}
+          {agePickerOpen && (
+            <div className="mt-2 pt-2 border-t border-border">
+              <p className="text-xs text-steel mb-2">Возраст ребёнка:</p>
+              <div className="flex flex-col gap-1">
+                {AGE_GROUPS.map(ag => (
+                  <button
+                    key={ag.value}
+                    onClick={() => {
+                      setMobileTravelers(prev => [...prev, { type: 'child' as const, citizenship: 'RU', ageGroup: ag.value }])
+                      setAgePickerOpen(false)
+                    }}
+                    className="text-left px-3 h-8 rounded-lg text-sm border border-border text-ink hover:border-brand hover:text-brand transition-all"
+                  >
+                    {ag.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-
-        {/* Расширенные фильтры */}
-        <button
-          onClick={() => setMobileFiltersOpen(true)}
-          className="w-full h-11 rounded-2xl border border-border bg-white shadow-sm text-sm text-steel hover:border-brand hover:text-brand transition-colors"
-        >
-          Расширенные фильтры
-        </button>
-
-        {/* Очистить + Применить */}
-        <div className="flex gap-2">
+        <div className="flex gap-3 mt-3 pt-3 border-t border-border">
           <button
-            onClick={handleReset}
-            className="flex-1 h-11 rounded-2xl border border-border bg-white text-sm text-steel hover:border-warning hover:text-warning transition-colors"
+            onClick={() => setMobileTravelers(prev => [...prev, { type: 'adult' as const, citizenship: 'RU' }])}
+            className="flex items-center gap-1 text-xs text-brand hover:text-positive transition-colors"
           >
-            Сбросить
+            <Plus size={12} /> Взрослый
           </button>
           <button
-            onClick={() => applyFilter()}
-            className="flex-1 h-11 rounded-2xl bg-brand text-white text-sm font-medium hover:bg-positive transition-colors"
+            onClick={() => setAgePickerOpen(true)}
+            className="flex items-center gap-1 text-xs text-brand hover:text-positive transition-colors"
           >
-            Применить
+            <Plus size={12} /> Ребёнок
           </button>
         </div>
-
       </div>
+    )}
+  </div>
+
+  {/* Тип жилья */}
+  <div ref={housingRef}>
+    <button
+      onClick={() => setHousingOpen(p => !p)}
+      className="flex items-center justify-between w-full px-4 py-3.5 bg-white border border-border rounded-2xl shadow-sm hover:border-brand transition-colors"
+    >
+      <span className="text-xs text-steel">Тип жилья</span>
+      <span className="text-sm font-medium text-ink">
+        {HOUSING_TYPES.find(h => h.value === mobileHousingType)?.label}
+        {' · '}
+        {(mobileHousingType === 'house' ? BEDROOM_OPTIONS_HOUSE : BEDROOM_OPTIONS_APARTMENT).find(b => b.value === mobileBedrooms)?.label}
+      </span>
+    </button>
+
+    {housingOpen && (
+      <div className="mt-2 bg-white border border-border rounded-2xl shadow-sm p-4">
+        <p className="text-xs text-steel mb-2">Тип жилья</p>
+        <div className="flex gap-2 mb-3">
+          {HOUSING_TYPES.map(h => (
+            <button
+              key={h.value}
+              onClick={() => {
+                setMobileHousingType(h.value)
+                if (h.value === 'house' && mobileBedrooms === '0') setMobileBedrooms('1')
+              }}
+              className={`flex-1 h-9 rounded-xl text-sm border transition-all ${
+                mobileHousingType === h.value
+                  ? 'bg-brand border-brand text-white'
+                  : 'border-border text-ink hover:border-brand hover:text-brand'
+              }`}
+            >
+              {h.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-steel mb-2">Спальни</p>
+        <div className="flex gap-2">
+          {(mobileHousingType === 'house' ? BEDROOM_OPTIONS_HOUSE : BEDROOM_OPTIONS_APARTMENT).map(b => (
+            <button
+              key={b.value}
+              onClick={() => setMobileBedrooms(b.value)}
+              className={`flex-1 h-9 rounded-xl text-sm border transition-all ${
+                mobileBedrooms === b.value
+                  ? 'bg-brand border-brand text-white'
+                  : 'border-border text-ink hover:border-brand hover:text-brand'
+              }`}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+
+  {/* Стиль жизни */}
+  <div className="flex items-center justify-between px-4 py-3.5 bg-white border border-border rounded-2xl shadow-sm">
+    <span className="text-xs text-steel shrink-0">Стиль жизни</span>
+    <div className="flex gap-1 p-1 border border-brand rounded-full">
+      {LIFESTYLE_OPTIONS.map(opt => (
+        <button
+          key={opt.value}
+          onClick={() => setMobileLifestyle(opt.value)}
+          className={`px-2.5 h-7 rounded-full text-xs transition-all whitespace-nowrap ${
+            mobileLifestyle === opt.value
+              ? 'bg-brand text-white font-medium'
+              : 'text-steel hover:text-ink'
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  </div>
+
+  {/* Расширенные фильтры */}
+  <button
+    onClick={() => setMobileFiltersOpen(true)}
+    className="w-full h-11 rounded-2xl border border-border bg-white shadow-sm text-sm text-steel hover:border-brand hover:text-brand transition-colors"
+  >
+    Расширенные фильтры
+  </button>
+
+  {/* Очистить + Применить */}
+  <div className="flex gap-2">
+    <button
+      onClick={resetMobileFilter}
+      className="flex-1 h-11 rounded-2xl border border-border bg-white text-sm text-steel hover:border-warning hover:text-warning transition-colors"
+    >
+      Очистить
+    </button>
+    <button
+      onClick={applyMobileFilter}
+      className="flex-1 h-11 rounded-2xl bg-brand text-white text-sm font-medium hover:bg-positive transition-colors"
+    >
+      Применить
+    </button>
+  </div>
+
+</div>
 
       {/* Fullscreen модал */}
       {mobileFiltersOpen && (
