@@ -3,17 +3,8 @@ import { CityGrid } from '@/components/city/CityGrid'
 import { PageHero } from '@/components/shared/PageHero'
 import { QuickFilter } from '@/components/filters/QuickFilter'
 
-export default async function HomePage({
-  searchParams,
-}: {
-  searchParams: { housing_type?: string; bedrooms?: string; adults?: string; children?: string }
-}) {
+export default async function HomePage() {
   const cities = await getCities()
-
-  const housingType = searchParams.housing_type ?? 'apartment'
-  const bedrooms = searchParams.bedrooms ? parseInt(searchParams.bedrooms) : null
-  const adults = parseInt(searchParams.adults ?? '1')
-  const children = parseInt(searchParams.children ?? '0')
 
   return (
     <main>
@@ -27,13 +18,7 @@ export default async function HomePage({
       />
       <QuickFilter />
       <div className="container mx-auto px-4 py-8">
-        <CityGrid
-          cities={cities}
-          housingType={housingType}
-          bedrooms={bedrooms}
-          adults={adults}
-          children={children}
-        />
+        <CityGrid cities={cities} />
       </div>
     </main>
   )
