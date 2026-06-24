@@ -153,7 +153,7 @@ export function QuickFilter() {
 
   function addTraveler(type: 'adult' | 'child') {
     if (type === 'adult') {
-      const next = [...travelers, { type: 'adult', citizenship: 'RU' }]
+      const next = [...travelers, { type: 'adult' as const, citizenship: 'RU' }]
       setTravelers(next)
       applyFilter({ travelers: next })
     } else {
