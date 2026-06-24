@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Users, Home, Leaf, Stamp, Search, ChevronDown, Plus, Minus } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
+import { Users, Home, Leaf, Stamp, ChevronDown, Plus, Minus, RotateCcw } from 'lucide-react'
 
 type Traveler = {
   type: 'adult' | 'child'
@@ -50,12 +51,28 @@ const BEDROOM_OPTIONS_HOUSE = [
 export function QuickFilter() {
   const router = useRouter()
 
-  const [budget, setBudget] = useState('1000')
-  const [travelers, setTravelers] = useState<Traveler[]>([{ type: 'adult', citizenship: 'RU' }])
-  const [housingType, setHousingType] = useState('apartment')
-  const [bedrooms, setBedrooms] = useState('1')
-  const [climateSelected, setClimateSelected] = useState<string[]>([])
+  const searchParams = useSearchParams()
+
+  const [budget, setBudget] = useState(searchParams.get('budget') ?? '1000')
+  const [housingType, setHousingType] = useState(searchParams.get('housing_type') ?? 'apartment')
+  const [bedrooms, setBedrooms] = useState(searchParams.get('bedrooms') ?? '0')
+  const [climateSelected, setClimateSelected] = useState<string[]>(
+    searchParams.get('climate')?.split(',').filter(Boolean) ?? []
+  )
   const [conditionsSelected, setConditionsSelected] = useState<string[]>([])
+  const [travelers, setTravelers] = useState<Traveler[]>(() => {
+    const adults = parseInt(searchParams.get('adults') ?? '1')
+    const children = parseInt(searchParams.get('children') ?? '0')
+    const citizenships = searchParams.get('citizenships')?.split(',') ?? ['RU']
+    const result: Traveler[] = []
+    for (let i = 0; i < adults; i++) {
+      result.push({ type: 'adult', citizenship: citizenships[i] ?? 'RU' })
+    }
+    for (let i = 0; i < children; i++) {
+      result.push({ type: 'child', citizenship: citizenships[adults + i] ?? 'RU' })
+    }
+    return result
+  })
 
   const [travelersOpen, setTravelersOpen] = useState(false)
   const [housingOpen, setHousingOpen] = useState(false)
@@ -78,51 +95,104 @@ export function QuickFilter() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
+  const applyFilter = useCallback((overrides: Partial<{
+    budget: string
+    housingType: string
+    bedrooms: string
+    climateSelected: string[]
+    conditionsSelected: string[]
+    travelers: Traveler[]
+  }> = {}) => {
+    const b = overrides.budget ?? budget
+    const ht = overrides.housingType ?? housingType
+    const bd = overrides.bedrooms ?? bedrooms
+    const cl = overrides.climateSelected ?? climateSelected
+    const cond = overrides.conditionsSelected ?? conditionsSelected
+    const tr = overrides.travelers ?? travelers
+
+    const params = new URLSearchParams()
+    const budgetNum = parseInt(b)
+    if (!isNaN(budgetNum) && budgetNum > 0) params.set('budget', String(budgetNum))
+    params.set('housing_type', ht)
+    params.set('bedrooms', bd)
+    if (cl.length) params.set('climate', cl.join(','))
+    cond.forEach(c => params.set(c, '1'))
+    const citizenships = [...new Set(tr.map(t => t.citizenship))]
+    params.set('citizenships', citizenships.join(','))
+    params.set('adults', String(tr.filter(t => t.type === 'adult').length))
+    params.set('children', String(tr.filter(t => t.type === 'child').length))
+    router.replace(`/?${params.toString()}`)
+  }, [budget, housingType, bedrooms, climateSelected, conditionsSelected, travelers, router])
+
   function addTraveler(type: 'adult' | 'child') {
-    setTravelers(prev => [...prev, { type, citizenship: 'RU' }])
+    const next = [...travelers, { type, citizenship: 'RU' }]
+    setTravelers(next)
+    applyFilter({ travelers: next })
   }
 
   function removeTraveler(index: number) {
     if (travelers.length === 1) return
-    setTravelers(prev => prev.filter((_, i) => i !== index))
+    const next = travelers.filter((_, i) => i !== index)
+    setTravelers(next)
+    applyFilter({ travelers: next })
   }
 
   function updateCitizenship(index: number, citizenship: string) {
-    setTravelers(prev => prev.map((t, i) => i === index ? { ...t, citizenship } : t))
+    const next = travelers.map((t, i) => i === index ? { ...t, citizenship } : t)
+    setTravelers(next)
+    applyFilter({ travelers: next })
   }
 
   function toggleClimate(value: string) {
-    setClimateSelected(prev =>
-      prev.includes(value) ? prev.filter(v => v !== value) : [...prev, value]
-    )
+    const next = climateSelected.includes(value)
+      ? climateSelected.filter(v => v !== value)
+      : [...climateSelected, value]
+    setClimateSelected(next)
+    applyFilter({ climateSelected: next })
   }
 
   function toggleCondition(value: string) {
-    setConditionsSelected(prev =>
-      prev.includes(value) ? prev.filter(v => v !== value) : [...prev, value]
-    )
+    const next = conditionsSelected.includes(value)
+      ? conditionsSelected.filter(v => v !== value)
+      : [...conditionsSelected, value]
+    setConditionsSelected(next)
+    applyFilter({ conditionsSelected: next })
   }
 
   function handleHousingType(type: string) {
+    const newBedrooms = type === 'house' && bedrooms === '0' ? '1' : bedrooms
     setHousingType(type)
     if (type === 'house' && bedrooms === '0') setBedrooms('1')
+    applyFilter({ housingType: type, bedrooms: newBedrooms })
   }
 
-  function handleApply() {
-    const params = new URLSearchParams()
-    const budgetNum = parseInt(budget)
-    if (!isNaN(budgetNum) && budgetNum > 0) params.set('budget', String(budgetNum))
-    params.set('housing_type', housingType)
-    params.set('bedrooms', bedrooms)
-    if (climateSelected.length) params.set('climate', climateSelected.join(','))
-    conditionsSelected.forEach(c => params.set(c, '1'))
-    const citizenships = [...new Set(travelers.map(t => t.citizenship))]
-    params.set('citizenships', citizenships.join(','))
-    params.set('adults', String(travelers.filter(t => t.type === 'adult').length))
-    params.set('children', String(travelers.filter(t => t.type === 'child').length))
-    router.push(`/?${params.toString()}`)
+  function handleBedroomsChange(value: string) {
+    setBedrooms(value)
+    applyFilter({ bedrooms: value })
   }
 
+  function handleBudgetChange(value: string) {
+    setBudget(value)
+  }
+
+  function handleBudgetBlur() {
+    applyFilter({ budget })
+  }
+
+  function handleBudgetStep(delta: number) {
+    const next = String(Math.min(20000, Math.max(0, (parseInt(budget) || 0) + delta)))
+    setBudget(next)
+    applyFilter({ budget: next })
+  }
+  function handleReset() {
+    setBudget('1000')
+    setHousingType('apartment')
+    setBedrooms('0')
+    setClimateSelected([])
+    setConditionsSelected([])
+    setTravelers([{ type: 'adult', citizenship: 'RU' }])
+    router.replace('/')
+  }
   function travelersLabel() {
     const adults = travelers.filter(t => t.type === 'adult')
     const children = travelers.filter(t => t.type === 'child')
@@ -156,7 +226,7 @@ export function QuickFilter() {
     <div className="bg-white border-b border-border">
       <div className="container mx-auto px-4 py-4">
         <div className="hidden sm:flex flex-wrap items-end gap-3">
-  
+
           {/* Блок 1 — Релоканты */}
           <div className="flex flex-col gap-1" ref={travelersRef}>
             <span className="text-xs text-steel">Кто переезжает:</span>
@@ -208,13 +278,13 @@ export function QuickFilter() {
               )}
             </div>
           </div>
-  
+
           {/* Блок 2 — Бюджет */}
           <div className="flex flex-col gap-1">
             <span className="text-xs text-steel">Ваш бюджет на всех:</span>
             <div className={`${pillFilled} gap-1.5`}>
               <button
-                onClick={() => setBudget(v => String(Math.max(0, (parseInt(v) || 0) - 50)))}
+                onClick={() => handleBudgetStep(-50)}
                 className="text-steel hover:text-brand transition-colors"
               >
                 <Minus size={14} />
@@ -223,23 +293,21 @@ export function QuickFilter() {
               <input
                 type="text"
                 value={budget}
-                onChange={e => {
-                  const val = e.target.value.replace(/[^0-9]/g, '')
-                  setBudget(val)
-                }}
+                onChange={e => handleBudgetChange(e.target.value.replace(/[^0-9]/g, ''))}
+                onBlur={handleBudgetBlur}
                 className="w-16 text-sm font-medium text-ink outline-none text-center bg-transparent"
                 placeholder="1000"
               />
               <span className="text-steel text-sm shrink-0">$/мес</span>
               <button
-                onClick={() => setBudget(v => String(Math.min(20000, (parseInt(v) || 0) + 50)))}
+                onClick={() => handleBudgetStep(50)}
                 className="text-steel hover:text-brand transition-colors"
               >
                 <Plus size={14} />
               </button>
             </div>
           </div>
-  
+
           {/* Блок 3 — Жильё */}
           <div className="flex flex-col gap-1" ref={housingRef}>
             <span className="text-xs text-steel">Тип жилья:</span>
@@ -275,7 +343,7 @@ export function QuickFilter() {
                     {bedroomOptions.map(b => (
                       <button
                         key={b.value}
-                        onClick={() => setBedrooms(b.value)}
+                        onClick={() => handleBedroomsChange(b.value)}
                         className={`flex-1 h-8 rounded-lg text-sm border transition-all ${
                           bedrooms === b.value
                             ? 'bg-brand border-brand text-white'
@@ -290,10 +358,10 @@ export function QuickFilter() {
               )}
             </div>
           </div>
-  
+
           {/* Разделитель */}
           <div className="h-9 w-px bg-border self-end shrink-0" />
-  
+
           {/* Блок 4 — Климат */}
           <div className="flex flex-col gap-1" ref={climateRef}>
             <span className="text-xs text-steel opacity-0 pointer-events-none">-</span>
@@ -332,7 +400,7 @@ export function QuickFilter() {
               )}
             </div>
           </div>
-  
+
           {/* Блок 5 — Легализация */}
           <div className="flex flex-col gap-1" ref={conditionsRef}>
             <span className="text-xs text-steel opacity-0 pointer-events-none">-</span>
@@ -371,20 +439,19 @@ export function QuickFilter() {
               )}
             </div>
           </div>
-  
-          {/* Кнопка Найти — ml-auto прижимает вправо, при переносе встаёт слева */}
+          {/* Сброс */}
           <div className="flex flex-col gap-1 lg:ml-auto">
             <span className="text-xs text-steel opacity-0 pointer-events-none">-</span>
             <button
-              onClick={handleApply}
-              className="flex items-center gap-2 h-9 px-5 rounded-full bg-ink text-white text-sm font-medium hover:bg-ink/80 transition-colors whitespace-nowrap"
+              onClick={handleReset}
+              className="flex items-center gap-1.5 h-9 px-4 rounded-full border border-border text-sm text-steel hover:text-warning hover:border-warning transition-colors whitespace-nowrap"
             >
-              <Search size={14} />
-              Найти
+              <RotateCcw size={13} />
+              Сбросить
             </button>
           </div>
-  
         </div>
       </div>
     </div>
-  )}
+  )
+}

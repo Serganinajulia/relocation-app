@@ -6,9 +6,10 @@ import { Info } from 'lucide-react'
 type Props = {
   text: string
   link?: { label: string; href: string }
+  className?: string
 }
 
-export function InfoTooltip({ text, link }: Props) {
+export function InfoTooltip({ text, link, className }: Props) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -26,7 +27,7 @@ export function InfoTooltip({ text, link }: Props) {
     <div className="relative inline-flex" ref={ref}>
       <button
         onClick={() => setOpen(prev => !prev)}
-        className="text-steel hover:text-brand transition-colors"
+        className={className ?? 'text-steel hover:text-brand transition-colors'}
       >
         <Info size={13} />
       </button>

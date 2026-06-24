@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase'
 
-const WATER_SEA_TYPES = ['sea', 'ocean', 'lake'] as const
+const WATER_SEA_TYPES = ['sea', 'ocean', 'lake', 'river'] as const
 
 export type CitiesFilter = {
   has_sea?: boolean
@@ -62,7 +62,6 @@ export async function getCities(filter: CitiesFilter = {}) {
       costs (
         groceries_usd,
         cafes_usd,
-        utilities_usd,
         internet_home_usd,
         transport_basic_usd
       ),
@@ -70,7 +69,9 @@ export async function getCities(filter: CitiesFilter = {}) {
         accommodation_type,
         bedrooms_count,
         price_usd_min,
-        price_usd_max
+        price_usd_max,
+        utilities_usd_min,
+        utilities_usd_max
       )
     `)
 

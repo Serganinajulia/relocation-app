@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Clock, Shield, Waves, Mountain, Sun, Snowflake, Stamp, Globe } from 'lucide-react'
 import Image from 'next/image'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
+import { calcGroceriesMultiplier } from '@/lib/calc/formulas'
 
 type I18n = { ru: string; en: string }
 
@@ -42,7 +43,6 @@ type City = {
   costs: {
     groceries_usd: number | null
     cafes_usd: number | null
-    utilities_usd: number | null
     internet_home_usd: number | null
     transport_basic_usd: number | null
   }[]
@@ -51,30 +51,67 @@ type City = {
     bedrooms_count: number | null
     price_usd_min: number | null
     price_usd_max: number | null
+    utilities_usd_min: number | null
+    utilities_usd_max: number | null
   }[]
 }
 
-type Props = { city: City }
+type Props = {
+  city: City
+  housingType: string
+  bedrooms: number | null
+  adults: number
+  children: number
+}
 
-function calcMinCost(costs: City['costs']): number | null {
+function calcMinCost(
+  costs: City['costs'],
+  rentOptions: City['rent_options'],
+  housingType: string,
+  bedrooms: number | null,
+  adults: number,
+  children: number
+): number | null {
   if (!costs?.length) return null
   const c = costs[0]
-  return (c.groceries_usd ?? 0)
-    + (c.cafes_usd ?? 0)
-    + (c.utilities_usd ?? 0)
-    + (c.internet_home_usd ?? 0)
-    + (c.transport_basic_usd ?? 0)
+
+  // если bedrooms выбран — берём коммуналку от выбранного жилья
+  // если дефолт (null) — от студии или мин записи
+  const entry = bedrooms !== null
+    ? rentOptions?.find(r => r.accommodation_type === housingType && r.bedrooms_count === bedrooms)
+    : (rentOptions?.find(r => r.accommodation_type === housingType && r.bedrooms_count === 0) ??
+       rentOptions?.find(r => r.accommodation_type === housingType && r.bedrooms_count === 1))
+
+  const utilities = entry?.utilities_usd_min ?? 0
+  const multiplier = calcGroceriesMultiplier(adults, children)
+  return Math.round((c.groceries_usd ?? 0) * multiplier + (c.internet_home_usd ?? 0) + utilities)
 }
 
-function getMinRent(rentOptions: City['rent_options']): number | null {
-  const studio = rentOptions?.find(r => r.bedrooms_count === 0)
-  return studio?.price_usd_min ?? null
+function getMinRent(
+  rentOptions: City['rent_options'],
+  housingType: string,
+  bedrooms: number | null
+): number | null {
+  if (bedrooms !== null) {
+    return rentOptions?.find(r => r.accommodation_type === housingType && r.bedrooms_count === bedrooms)?.price_usd_min ?? null
+  }
+  // дефолт — студия или мин запись
+  return (
+    rentOptions?.find(r => r.accommodation_type === housingType && r.bedrooms_count === 0)?.price_usd_min ??
+    rentOptions?.find(r => r.accommodation_type === housingType && r.bedrooms_count === 1)?.price_usd_min ??
+    null
+  )
 }
 
-function getMaxRent(rentOptions: City['rent_options']): number | null {
-  const twoPlus = rentOptions?.filter(r => r.bedrooms_count !== null && r.bedrooms_count >= 2)
-  if (!twoPlus?.length) return null
-  return Math.max(...twoPlus.map(r => r.price_usd_max ?? 0))
+function getMaxRent(
+  rentOptions: City['rent_options'],
+  housingType: string,
+  bedrooms: number | null
+): number | null {
+  if (bedrooms !== null) {
+    return rentOptions?.find(r => r.accommodation_type === housingType && r.bedrooms_count === bedrooms)?.price_usd_max ?? null
+  }
+  return null // дефолт — только мин студии, без диапазона
 }
 
 function countryFlag(countryId: string | null): string {
@@ -89,6 +126,7 @@ function seaLabel(seaType: string | null): string | null {
     case 'sea': return 'Море'
     case 'ocean': return 'Океан'
     case 'lake': return 'Озеро'
+    case 'river': return 'Река'
     default: return null
   }
 }
@@ -112,25 +150,40 @@ function barColor(index: number | null): string {
 
 function regimeBadge(regimeTypeId: number | null): { className: string } {
   switch (regimeTypeId) {
-    case 1: return { className: 'bg-positive-bg text-positive' }        // Полная демократия
-    case 2: return { className: 'bg-medium-bg text-medium' }            // Несовершенная демократия
-    case 3: return { className: 'bg-orange-50 text-orange-500' }        // Гибридный режим
-    case 4: return { className: 'bg-warning-bg text-warning' }          // Авторитарный режим
+    case 1: return { className: 'bg-positive-bg text-positive' }
+    case 2: return { className: 'bg-medium-bg text-medium' }
+    case 3: return { className: 'bg-orange-50 text-orange-500' }
+    case 4: return { className: 'bg-warning-bg text-warning' }
     default: return { className: 'bg-porcelain text-steel' }
   }
 }
-function visaLabel(visas: { origin_country_id: string; visa_type: string; allowed_days: number | null; conditions_i18n: unknown }[] | null): { label: string; className: string } {
+
+function visaLabel(
+  visas: { origin_country_id: string; visa_type: string | null; allowed_days: number | null; conditions_i18n: unknown }[] | null
+): { label: string; className: string; tooltip?: string } {
   const ruVisa = visas?.find(v => v.origin_country_id === 'RU')
   if (!ruVisa) return { label: 'Уточнить', className: 'bg-porcelain text-steel' }
+
   if (ruVisa.visa_type === 'visa_free') {
     if (ruVisa.allowed_days && ruVisa.allowed_days >= 180) {
       return { label: `Без визы ${ruVisa.allowed_days} дней`, className: 'bg-positive-bg text-positive' }
     }
     return { label: `Без визы ${ruVisa.allowed_days} дней`, className: 'bg-medium-bg text-medium' }
   }
+
+  if (ruVisa.visa_type === 'visa_free_conditional') {
+    const tooltip = (ruVisa.conditions_i18n as { ru?: string })?.ru
+    return {
+      label: ruVisa.allowed_days ? `Условный безвиз ${ruVisa.allowed_days} дней` : 'Условный безвиз',
+      className: 'bg-medium-bg text-medium',
+      tooltip,
+    }
+  }
+
   const condName = (ruVisa.conditions_i18n as { ru?: string })?.ru
   return { label: condName ?? 'Нужна виза', className: 'bg-warning-bg text-warning' }
 }
+
 function getCurrentTime(offset: number | null): string {
   if (offset == null) return '—'
   const now = new Date()
@@ -139,13 +192,13 @@ function getCurrentTime(offset: number | null): string {
   return local.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 }
 
-export function CityCard({ city }: Props) {
+export function CityCard({ city, housingType, bedrooms, adults, children }: Props) {
   const name = (city.name_i18n as I18n)?.ru ?? 'Без названия'
   const countryName = (city.countries?.name_i18n as I18n)?.ru ?? ''
   const flag = countryFlag(city.country_id)
-  const minCost = calcMinCost(city.costs)
-  const minRent = getMinRent(city.rent_options)
-  const maxRent = getMaxRent(city.rent_options)
+  const minCost = calcMinCost(city.costs, city.rent_options, housingType, bedrooms, adults, children)
+  const minRent = getMinRent(city.rent_options, housingType, bedrooms)
+  const maxRent = getMaxRent(city.rent_options, housingType, bedrooms)
   const tz = city.timezone_offset
   const tzLabel = tz != null ? `GMT${tz >= 0 ? '+' : ''}${tz}` : '—'
   const currentTime = getCurrentTime(tz)
@@ -161,6 +214,10 @@ export function CityCard({ city }: Props) {
   const officialLangs = languages.filter(l => l.is_official)
   const shownLangs = officialLangs.slice(0, 2)
   const extraLangs = officialLangs.length - 2
+
+  console.log('housingType:', housingType, 'bedrooms:', bedrooms, 'adults:', adults, 'children:', children)
+  console.log('rent_options:', city.rent_options)
+  console.log('minCost:', minCost, 'minRent:', minRent)
 
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
@@ -179,10 +236,8 @@ export function CityCard({ city }: Props) {
         ) : (
           <div className="w-full h-full bg-porcelain" />
         )}
-        {/* Градиент поверх фото */}
         <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/40 to-ink/10" />
 
-        {/* Название + часовой пояс */}
         <div className="absolute bottom-0 left-0 right-0 z-10 p-4">
           <p className="text-white/70 text-xs font-medium tracking-widest uppercase mb-0.5">
             {flag} {countryName}
@@ -210,28 +265,37 @@ export function CityCard({ city }: Props) {
             <div className="flex gap-3 text-sm mt-1.5">
               {minCost && (
                 <div className="bg-porcelain rounded-lg px-3 py-2 flex-1">
-                  <p className="text-xs text-steel mb-0.5">Стоимость жизни</p>
-                  <p className="font-semibold text-ink">от ${minCost}</p>
+                  <span className="text-xs text-steel mb-0.5 flex items-center gap-1">
+                    Стоимость жизни
+                    <InfoTooltip text="Используйте фильтры для более точного расчета" />
+                  </span>
+                  <span className="font-semibold text-ink">от ${minCost}</span>
                 </div>
               )}
               {minRent && (
                 <div className="bg-porcelain rounded-lg px-3 py-2 flex-1">
-                  <p className="text-xs text-steel mb-0.5">Стоимость аренды</p>
-                  <p className="font-semibold text-ink">
-                    ${minRent}{maxRent ? `–$${maxRent}` : ''}
-                  </p>
+                  <span className="text-xs text-steel mb-0.5 flex items-center gap-1">
+                    Стоимость аренды
+                    <InfoTooltip text="Выберите тип жилья в фильтре для более точного расчета" />
+                  </span>
+                  <span className="font-semibold text-ink">
+                    от ${minRent}{maxRent ? `–$${maxRent}` : ''}
+                  </span>
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* Теги: виза, режим, свобода, море, горы */}
+        {/* Теги */}
         <div className="flex flex-wrap gap-1.5">
-        <span className={`flex items-center gap-1 text-sm px-2.5 py-1 rounded-full ${visa.className}`}>
-          <Stamp size={12} />
-          {visa.label}
-        </span>
+          <span className={`flex items-center gap-1 text-sm px-2.5 py-1 rounded-full ${visa.className}`}>
+            <Stamp size={12} />
+            {visa.label}
+            {visa.tooltip && (
+              <InfoTooltip text={visa.tooltip} className="text-medium hover:text-medium/70 transition-colors" />
+            )}
+          </span>
           {regimeName && (
             <span className={`flex items-center gap-1 text-sm px-2.5 py-1 rounded-full ${regime.className}`}>
               <Globe size={12} />
@@ -254,8 +318,6 @@ export function CityCard({ city }: Props) {
 
         {/* Две колонки: климат + языки */}
         <div className="grid grid-cols-2 gap-4">
-
-          {/* Климат */}
           <div className="flex flex-col gap-1.5">
             <p className="flex items-center gap-1.5 text-sm text-steel">
               <Sun size={13} className="text-brand shrink-0" />
@@ -269,7 +331,6 @@ export function CityCard({ city }: Props) {
             </p>
           </div>
 
-          {/* Языки */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-sm text-steel">Язык:</span>
@@ -291,22 +352,21 @@ export function CityCard({ city }: Props) {
               </span>
             </div>
           </div>
-
         </div>
 
         {/* Безопасность */}
         <div>
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="flex items-center gap-1.5 text-steel text-sm">
-            <Shield size={13} className="text-brand" />
-            Безопасность
-            <InfoTooltip
-              text="Индекс безопасности Numbeo — оценка уровня личной безопасности по данным пользователей."
-              link={{ label: 'Numbeo', href: 'https://www.numbeo.com/crime/' }}
-            />
-          </span>
-          <span className="text-xs text-steel">{city.safety_index}/100</span>
-        </div>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="flex items-center gap-1.5 text-steel text-sm">
+              <Shield size={13} className="text-brand" />
+              Безопасность
+              <InfoTooltip
+                text="Индекс безопасности Numbeo — оценка уровня личной безопасности по данным пользователей."
+                link={{ label: 'Numbeo', href: 'https://www.numbeo.com/crime/' }}
+              />
+            </span>
+            <span className="text-xs text-steel">{city.safety_index}/100</span>
+          </div>
           <div className="w-full bg-porcelain rounded-full h-1">
             <div
               className={`h-1 rounded-full transition-all ${barColor(city.safety_index)}`}
@@ -314,6 +374,7 @@ export function CityCard({ city }: Props) {
             />
           </div>
         </div>
+
         {/* Свобода */}
         {politics?.fh_score != null && (
           <div>
