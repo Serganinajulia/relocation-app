@@ -277,7 +277,7 @@ export function CityCard({ city, housingType, bedrooms, adults, children, lifest
                     <InfoTooltip text="Выберите тип жилья в фильтре для более точного расчета" />
                   </span>
                   <span className="font-semibold text-ink">
-                    ~ ${result.rent}
+                  ~ ${result?.rent}
                   </span>
                 </div>
               )}
