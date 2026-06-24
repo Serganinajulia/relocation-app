@@ -62,8 +62,7 @@ export async function getCities(filter: CitiesFilter = {}) {
       costs (
         groceries_usd,
         cafes_usd,
-        internet_home_usd,
-        transport_basic_usd
+        internet_home_usd
       ),
       rent_options (
         accommodation_type,
