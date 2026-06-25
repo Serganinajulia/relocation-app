@@ -10,7 +10,7 @@ type AgeGroup = 'baby' | 'toddler' | 'school'
 type Traveler = {
   type: 'adult' | 'child'
   citizenship: string
-  ageGroup?: AgeGroup  // только для детей
+  ageGroup?: AgeGroup
 }
 
 const AGE_GROUPS: { value: AgeGroup; label: string }[] = [
@@ -56,6 +56,7 @@ const BEDROOM_OPTIONS_HOUSE = [
   { value: '2', label: '2+' },
   { value: '3', label: '3+' },
 ]
+
 const LIFESTYLE_OPTIONS = [
   { value: 'economy', label: 'Эконом' },
   { value: 'comfort', label: 'Базовый' },
@@ -64,7 +65,6 @@ const LIFESTYLE_OPTIONS = [
 
 export function QuickFilter() {
   const router = useRouter()
-
   const searchParams = useSearchParams()
 
   const [budget, setBudget] = useState(searchParams.get('budget') ?? '1000')
@@ -74,9 +74,7 @@ export function QuickFilter() {
     searchParams.get('climate')?.split(',').filter(Boolean) ?? []
   )
   const [conditionsSelected, setConditionsSelected] = useState<string[]>([])
-  const [lifestyle, setLifestyle] = useState(
-    searchParams.get('lifestyle') ?? 'comfort'
-  )
+  const [lifestyle, setLifestyle] = useState(searchParams.get('lifestyle') ?? 'comfort')
   const [travelers, setTravelers] = useState<Traveler[]>(() => {
     const adults = parseInt(searchParams.get('adults') ?? '1')
     const children = parseInt(searchParams.get('children') ?? '0')
@@ -91,6 +89,7 @@ export function QuickFilter() {
     return result
   })
 
+  // Desktop dropdown states
   const [travelersOpen, setTravelersOpen] = useState(false)
   const [housingOpen, setHousingOpen] = useState(false)
   const [climateOpen, setClimateOpen] = useState(false)
@@ -98,12 +97,22 @@ export function QuickFilter() {
   const [agePickerOpen, setAgePickerOpen] = useState(false)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
+  // Mobile dropdown states (separate)
+  const [mobileTravelersOpen, setMobileTravelersOpen] = useState(false)
+  const [mobileHousingOpen, setMobileHousingOpen] = useState(false)
+  const [mobileAgePickerOpen, setMobileAgePickerOpen] = useState(false)
+
+  // Desktop refs
   const travelersRef = useRef<HTMLDivElement>(null)
   const housingRef = useRef<HTMLDivElement>(null)
   const climateRef = useRef<HTMLDivElement>(null)
   const conditionsRef = useRef<HTMLDivElement>(null)
 
-  // Локальный стейт для мобильного фильтра
+  // Mobile refs
+  const mobileTravelersRef = useRef<HTMLDivElement>(null)
+  const mobileHousingRef = useRef<HTMLDivElement>(null)
+
+  // Mobile local state
   const [mobileTravelers, setMobileTravelers] = useState<Traveler[]>(travelers)
   const [mobileHousingType, setMobileHousingType] = useState(housingType)
   const [mobileBedrooms, setMobileBedrooms] = useState(bedrooms)
@@ -115,9 +124,11 @@ export function QuickFilter() {
       if (housingRef.current && !housingRef.current.contains(e.target as Node)) setHousingOpen(false)
       if (climateRef.current && !climateRef.current.contains(e.target as Node)) setClimateOpen(false)
       if (conditionsRef.current && !conditionsRef.current.contains(e.target as Node)) setConditionsOpen(false)
+      if (mobileTravelersRef.current && !mobileTravelersRef.current.contains(e.target as Node)) setMobileTravelersOpen(false)
+      if (mobileHousingRef.current && !mobileHousingRef.current.contains(e.target as Node)) setMobileHousingOpen(false)
     }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
+    document.addEventListener('click', handleClick)
+    return () => document.removeEventListener('click', handleClick)
   }, [])
 
   const applyFilter = useCallback((overrides: Partial<{
@@ -148,27 +159,25 @@ export function QuickFilter() {
     const citizenships = [...new Set(tr.map(t => t.citizenship))]
     params.set('citizenships', citizenships.join(','))
     params.set('adults', String(tr.filter(t => t.type === 'adult').length))
-
     const childrenList = tr.filter(t => t.type === 'child')
     params.set('children', String(childrenList.length))
     params.set('has_baby', String(childrenList.some(c => c.ageGroup === 'baby')))
     params.set('kids_in_kindergarten', String(childrenList.filter(c => c.ageGroup === 'toddler').length))
     params.set('kids_in_school', String(childrenList.filter(c => c.ageGroup === 'school').length))
-
     router.replace(`/?${params.toString()}`)
-  }, [budget, housingType, bedrooms, climateSelected, conditionsSelected, travelers, router])
+  }, [budget, housingType, bedrooms, climateSelected, conditionsSelected, travelers, lifestyle, router])
 
+  // Desktop handlers
   function addTraveler(type: 'adult' | 'child') {
     if (type === 'adult') {
       const next = [...travelers, { type: 'adult' as const, citizenship: 'RU' }]
       setTravelers(next)
       applyFilter({ travelers: next })
     } else {
-      // для ребёнка сначала открываем выбор возраста
       setAgePickerOpen(true)
     }
   }
-  
+
   function selectAgeGroup(ageGroup: AgeGroup) {
     const next = [...travelers, { type: 'child' as const, citizenship: 'RU', ageGroup }]
     setTravelers(next)
@@ -217,19 +226,6 @@ export function QuickFilter() {
     applyFilter({ bedrooms: value })
   }
 
-  function handleBudgetChange(value: string) {
-    setBudget(value)
-  }
-
-  function handleBudgetBlur() {
-    applyFilter({ budget })
-  }
-
-  function handleBudgetStep(delta: number) {
-    const next = String(Math.min(20000, Math.max(0, (parseInt(budget) || 0) + delta)))
-    setBudget(next)
-    applyFilter({ budget: next })
-  }
   function handleReset() {
     setBudget('1000')
     setHousingType('apartment')
@@ -241,6 +237,7 @@ export function QuickFilter() {
     router.replace('/')
   }
 
+  // Mobile handlers
   function applyMobileFilter() {
     setTravelers(mobileTravelers)
     setHousingType(mobileHousingType)
@@ -253,7 +250,7 @@ export function QuickFilter() {
       lifestyle: mobileLifestyle,
     })
   }
-  
+
   function resetMobileFilter() {
     setMobileTravelers([{ type: 'adult', citizenship: 'RU' }])
     setMobileHousingType('apartment')
@@ -269,9 +266,7 @@ export function QuickFilter() {
       const flags = adults.map(t => CITIZENSHIPS.find(c => c.value === t.citizenship)?.flag ?? '').join(' ')
       parts.push(`${adults.length} взр. ${flags}`)
     }
-    if (children.length) {
-      parts.push(`${children.length} реб.`)
-    }
+    if (children.length) parts.push(`${children.length} реб.`)
     return parts.join(' · ')
   }
 
@@ -286,474 +281,347 @@ export function QuickFilter() {
   const pillFilled = `${pillBase} border-brand text-ink hover:bg-porcelain`
   const pillDefault = `${pillBase} border-border text-ink hover:border-brand hover:text-brand`
   const pillActive = `${pillBase} border-brand text-brand bg-positive-bg`
-
   const bedroomOptions = housingType === 'house' ? BEDROOM_OPTIONS_HOUSE : BEDROOM_OPTIONS_APARTMENT
 
   return (
     <div className="bg-white border-b border-border">
-      <div className="container mx-auto px-4 py-4">
-        <div className="hidden sm:flex flex-wrap items-end gap-3">
 
-          {/* Блок 1 — Релоканты */}
-          <div className="flex flex-col gap-1" ref={travelersRef}>
-            <span className="text-xs text-steel">Кто переезжает:</span>
-            <div className="relative">
-              <button
-                onClick={() => setTravelersOpen(p => !p)}
-                className={pillFilled}
-              >
-                <Users size={14} className="text-brand shrink-0" />
-                <span>{travelersLabel()}</span>
-                <ChevronDown size={13} className={`text-steel transition-transform ${travelersOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {travelersOpen && (
-                <div className="absolute top-full left-0 mt-2 bg-white border border-border rounded-xl shadow-lg p-3 z-50 min-w-[240px]">
-                  <div className="flex flex-col gap-2">
-                  {travelers.map((t, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <span className="text-xs text-steel w-20 shrink-0">
-                        {t.type === 'adult' ? 'Взр.' : AGE_GROUPS.find(a => a.value === t.ageGroup)?.label ?? 'Реб.'}
-                      </span>
-                      <select
-                        value={t.citizenship}
-                        onChange={e => updateCitizenship(i, e.target.value)}
-                        className="flex-1 h-8 px-2 rounded-lg border border-border text-xs text-ink outline-none focus:border-brand"
-                      >
-                        {CITIZENSHIPS.map(c => (
-                          <option key={c.value} value={c.value}>{c.flag} {c.label}</option>
-                        ))}
-                      </select>
-                      <button
-                        onClick={() => removeTraveler(i)}
-                        disabled={travelers.length === 1}
-                        className="text-steel hover:text-warning disabled:opacity-30 transition-colors"
-                      >
-                        <Minus size={14} />
-                      </button>
-                    </div>
-                  ))}
+      {/* ===== ДЕСКТОП (xl+) ===== */}
+      <div className="hidden xl:block">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex flex-wrap items-end gap-3">
 
-                  {/* Выбор возраста */}
-                  {agePickerOpen && (
-                    <div className="mt-2 pt-2 border-t border-border">
-                      <p className="text-xs text-steel mb-2">Возраст ребёнка:</p>
-                      <div className="flex flex-col gap-1">
-                        {AGE_GROUPS.map(ag => (
-                          <button
-                            key={ag.value}
-                            onClick={() => selectAgeGroup(ag.value)}
-                            className="text-left px-3 h-8 rounded-lg text-sm border border-border text-ink hover:border-brand hover:text-brand transition-all"
-                          >
-                            {ag.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  </div>
-                  <div className="flex gap-3 mt-3 pt-3 border-t border-border">
-                    <button onClick={() => addTraveler('adult')} className="flex items-center gap-1 text-xs text-brand hover:text-positive transition-colors">
-                      <Plus size={12} /> Взрослый
-                    </button>
-                    <button onClick={() => addTraveler('child')} className="flex items-center gap-1 text-xs text-brand hover:text-positive transition-colors">
-                      <Plus size={12} /> Ребёнок
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Блок 3 — Жильё */}
-          <div className="flex flex-col gap-1" ref={housingRef}>
-            <span className="text-xs text-steel">Тип жилья:</span>
-            <div className="relative">
-              <button
-                onClick={() => setHousingOpen(p => !p)}
-                className={pillFilled}
-              >
-                <Home size={14} className="text-brand shrink-0" />
-                <span>{housingLabel()}</span>
-                <ChevronDown size={13} className={`text-steel transition-transform ${housingOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {housingOpen && (
-                <div className="absolute top-full left-0 mt-2 bg-white border border-border rounded-xl shadow-lg p-3 z-50 min-w-[280px]">
-                  <p className="text-xs text-steel mb-2">Тип жилья</p>
-                  <div className="flex gap-2 mb-3">
-                    {HOUSING_TYPES.map(h => (
-                      <button
-                        key={h.value}
-                        onClick={() => handleHousingType(h.value)}
-                        className={`flex-1 h-8 rounded-lg text-sm border transition-all ${
-                          housingType === h.value
-                            ? 'bg-brand border-brand text-white'
-                            : 'border-border text-ink hover:border-brand hover:text-brand'
-                        }`}
-                      >
-                        {h.label}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-xs text-steel mb-2">Спальни</p>
-                  <div className="flex gap-2">
-                    {bedroomOptions.map(b => (
-                      <button
-                        key={b.value}
-                        onClick={() => handleBedroomsChange(b.value)}
-                        className={`flex-1 h-8 rounded-lg text-sm border transition-all ${
-                          bedrooms === b.value
-                            ? 'bg-brand border-brand text-white'
-                            : 'border-border text-ink hover:border-brand hover:text-brand'
-                        }`}
-                      >
-                        {b.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Блок 2 — Стиль жизни */}
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-steel">Стиль жизни:</span>
-            <div className="flex gap-1 p-1 border border-brand rounded-full">
-              {LIFESTYLE_OPTIONS.map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => {
-                    setLifestyle(opt.value)
-                    applyFilter({ lifestyle: opt.value })
-                  }}
-                  className={`px-3 h-7 rounded-full text-sm transition-all whitespace-nowrap ${
-                    lifestyle === opt.value
-                      ? 'bg-brand hover:bg-positive text-white font-medium'
-                      : 'text-steel hover:text-ink'
-                  }`}
-                >
-                  {opt.label}
+            {/* Релоканты */}
+            <div className="flex flex-col gap-1" ref={travelersRef}>
+              <span className="text-xs text-steel">Кто переезжает:</span>
+              <div className="relative">
+                <button onClick={() => setTravelersOpen(p => !p)} className={pillFilled}>
+                  <Users size={14} className="text-brand shrink-0" />
+                  <span>{travelersLabel()}</span>
+                  <ChevronDown size={13} className={`text-steel transition-transform ${travelersOpen ? 'rotate-180' : ''}`} />
                 </button>
-              ))}
-            </div>
-          </div>
-          {/* Разделитель */}
-          <div className="h-9 w-px bg-border self-end shrink-0" />
-
-          {/* Блок 4 — Климат */}
-          <div className="flex flex-col gap-1" ref={climateRef}>
-            <span className="text-xs text-steel opacity-0 pointer-events-none">-</span>
-            <div className="relative">
-              <button
-                onClick={() => setClimateOpen(p => !p)}
-                className={climateSelected.length > 0 ? pillActive : pillDefault}
-              >
-                <Leaf size={14} className={climateSelected.length > 0 ? 'text-brand' : 'text-steel'} />
-                Климат и природа
-                {climateSelected.length > 0 && (
-                  <span className="bg-brand text-white text-xs px-1.5 py-0.5 rounded-full leading-none">
-                    {climateSelected.length}
-                  </span>
-                )}
-                <ChevronDown size={13} className={`text-steel transition-transform ${climateOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {climateOpen && (
-                <div className="absolute top-full left-0 mt-2 bg-white border border-border rounded-xl shadow-lg p-3 z-50 min-w-[220px]">
-                  <div className="flex flex-wrap gap-2">
-                    {CLIMATE_OPTIONS.map(opt => (
-                      <button
-                        key={opt.value}
-                        onClick={() => toggleClimate(opt.value)}
-                        className={`px-3 h-8 rounded-full text-sm border transition-all ${
-                          climateSelected.includes(opt.value)
-                            ? 'bg-brand border-brand text-white'
-                            : 'border-border text-ink hover:border-brand hover:text-brand'
-                        }`}
-                      >
-                        {opt.label}
+                {travelersOpen && (
+                  <div className="absolute top-full left-0 mt-2 bg-white border border-border rounded-xl shadow-lg p-3 z-50 min-w-[240px]">
+                    <div className="flex flex-col gap-2">
+                      {travelers.map((t, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <span className="text-xs text-steel w-20 shrink-0">
+                            {t.type === 'adult' ? 'Взр.' : AGE_GROUPS.find(a => a.value === t.ageGroup)?.label ?? 'Реб.'}
+                          </span>
+                          <select
+                            value={t.citizenship}
+                            onChange={e => updateCitizenship(i, e.target.value)}
+                            className="flex-1 h-8 px-2 rounded-lg border border-border text-xs text-ink outline-none focus:border-brand"
+                          >
+                            {CITIZENSHIPS.map(c => (
+                              <option key={c.value} value={c.value}>{c.flag} {c.label}</option>
+                            ))}
+                          </select>
+                          <button onClick={() => removeTraveler(i)} disabled={travelers.length === 1} className="text-steel hover:text-warning disabled:opacity-30 transition-colors">
+                            <Minus size={14} />
+                          </button>
+                        </div>
+                      ))}
+                      {agePickerOpen && (
+                        <div className="mt-2 pt-2 border-t border-border">
+                          <p className="text-xs text-steel mb-2">Возраст ребёнка:</p>
+                          <div className="flex flex-col gap-1">
+                            {AGE_GROUPS.map(ag => (
+                              <button key={ag.value} onClick={() => selectAgeGroup(ag.value)} className="text-left px-3 h-8 rounded-lg text-sm border border-border text-ink hover:border-brand hover:text-brand transition-all">
+                                {ag.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-3 mt-3 pt-3 border-t border-border">
+                      <button onClick={() => addTraveler('adult')} className="flex items-center gap-1 text-xs text-brand hover:text-positive transition-colors">
+                        <Plus size={12} /> Взрослый
                       </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Блок 5 — Легализация */}
-          <div className="flex flex-col gap-1" ref={conditionsRef}>
-            <span className="text-xs text-steel opacity-0 pointer-events-none">-</span>
-            <div className="relative">
-              <button
-                onClick={() => setConditionsOpen(p => !p)}
-                className={conditionsSelected.length > 0 ? pillActive : pillDefault}
-              >
-                <Stamp size={14} className={conditionsSelected.length > 0 ? 'text-brand' : 'text-steel'} />
-                Легализация
-                {conditionsSelected.length > 0 && (
-                  <span className="bg-brand text-white text-xs px-1.5 py-0.5 rounded-full leading-none">
-                    {conditionsSelected.length}
-                  </span>
-                )}
-                <ChevronDown size={13} className={`text-steel transition-transform ${conditionsOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {conditionsOpen && (
-                <div className="absolute top-full left-0 mt-2 bg-white border border-border rounded-xl shadow-lg p-3 z-50 min-w-[240px]">
-                  <div className="flex flex-wrap gap-2">
-                    {CONDITIONS_OPTIONS.map(opt => (
-                      <button
-                        key={opt.value}
-                        onClick={() => toggleCondition(opt.value)}
-                        className={`px-3 h-8 rounded-full text-sm border transition-all ${
-                          conditionsSelected.includes(opt.value)
-                            ? 'bg-brand border-brand text-white'
-                            : 'border-border text-ink hover:border-brand hover:text-brand'
-                        }`}
-                      >
-                        {opt.label}
+                      <button onClick={() => addTraveler('child')} className="flex items-center gap-1 text-xs text-brand hover:text-positive transition-colors">
+                        <Plus size={12} /> Ребёнок
                       </button>
-                    ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-          {/* Сброс */}
-            <div className="flex flex-col gap-1 lg:ml-auto">
+
+            {/* Жильё */}
+            <div className="flex flex-col gap-1" ref={housingRef}>
+              <span className="text-xs text-steel">Тип жилья:</span>
+              <div className="relative">
+                <button onClick={() => setHousingOpen(p => !p)} className={pillFilled}>
+                  <Home size={14} className="text-brand shrink-0" />
+                  <span>{housingLabel()}</span>
+                  <ChevronDown size={13} className={`text-steel transition-transform ${housingOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {housingOpen && (
+                  <div className="absolute top-full left-0 mt-2 bg-white border border-border rounded-xl shadow-lg p-3 z-50 min-w-[280px]">
+                    <p className="text-xs text-steel mb-2">Тип жилья</p>
+                    <div className="flex gap-2 mb-3">
+                      {HOUSING_TYPES.map(h => (
+                        <button key={h.value} onClick={() => handleHousingType(h.value)} className={`flex-1 h-8 rounded-lg text-sm border transition-all ${housingType === h.value ? 'bg-brand border-brand text-white' : 'border-border text-ink hover:border-brand hover:text-brand'}`}>
+                          {h.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-steel mb-2">Спальни</p>
+                    <div className="flex gap-2">
+                      {bedroomOptions.map(b => (
+                        <button key={b.value} onClick={() => handleBedroomsChange(b.value)} className={`flex-1 h-8 rounded-lg text-sm border transition-all ${bedrooms === b.value ? 'bg-brand border-brand text-white' : 'border-border text-ink hover:border-brand hover:text-brand'}`}>
+                          {b.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Стиль жизни */}
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-steel">Стиль жизни:</span>
+              <div className="flex gap-1 p-1 border border-brand rounded-full">
+                {LIFESTYLE_OPTIONS.map(opt => (
+                  <button key={opt.value} onClick={() => { setLifestyle(opt.value); applyFilter({ lifestyle: opt.value }) }} className={`px-3 h-7 rounded-full text-sm transition-all whitespace-nowrap ${lifestyle === opt.value ? 'bg-brand hover:bg-positive text-white font-medium' : 'text-steel hover:text-ink'}`}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="h-9 w-px bg-border self-end shrink-0" />
+
+            {/* Климат */}
+            <div className="flex flex-col gap-1" ref={climateRef}>
               <span className="text-xs text-steel opacity-0 pointer-events-none">-</span>
-              <button
-                onClick={handleReset}
-                className="flex items-center gap-1.5 h-9 px-4 rounded-full border border-border text-sm text-steel hover:text-warning hover:border-warning transition-colors whitespace-nowrap"
-              >
+              <div className="relative">
+                <button onClick={() => setClimateOpen(p => !p)} className={climateSelected.length > 0 ? pillActive : pillDefault}>
+                  <Leaf size={14} className={climateSelected.length > 0 ? 'text-brand' : 'text-steel'} />
+                  Климат и природа
+                  {climateSelected.length > 0 && <span className="bg-brand text-white text-xs px-1.5 py-0.5 rounded-full leading-none">{climateSelected.length}</span>}
+                  <ChevronDown size={13} className={`text-steel transition-transform ${climateOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {climateOpen && (
+                  <div className="absolute top-full left-0 mt-2 bg-white border border-border rounded-xl shadow-lg p-3 z-50 min-w-[220px]">
+                    <div className="flex flex-wrap gap-2">
+                      {CLIMATE_OPTIONS.map(opt => (
+                        <button key={opt.value} onClick={() => toggleClimate(opt.value)} className={`px-3 h-8 rounded-full text-sm border transition-all ${climateSelected.includes(opt.value) ? 'bg-brand border-brand text-white' : 'border-border text-ink hover:border-brand hover:text-brand'}`}>
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Легализация */}
+            <div className="flex flex-col gap-1" ref={conditionsRef}>
+              <span className="text-xs text-steel opacity-0 pointer-events-none">-</span>
+              <div className="relative">
+                <button onClick={() => setConditionsOpen(p => !p)} className={conditionsSelected.length > 0 ? pillActive : pillDefault}>
+                  <Stamp size={14} className={conditionsSelected.length > 0 ? 'text-brand' : 'text-steel'} />
+                  Легализация
+                  {conditionsSelected.length > 0 && <span className="bg-brand text-white text-xs px-1.5 py-0.5 rounded-full leading-none">{conditionsSelected.length}</span>}
+                  <ChevronDown size={13} className={`text-steel transition-transform ${conditionsOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {conditionsOpen && (
+                  <div className="absolute top-full left-0 mt-2 bg-white border border-border rounded-xl shadow-lg p-3 z-50 min-w-[240px]">
+                    <div className="flex flex-wrap gap-2">
+                      {CONDITIONS_OPTIONS.map(opt => (
+                        <button key={opt.value} onClick={() => toggleCondition(opt.value)} className={`px-3 h-8 rounded-full text-sm border transition-all ${conditionsSelected.includes(opt.value) ? 'bg-brand border-brand text-white' : 'border-border text-ink hover:border-brand hover:text-brand'}`}>
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Сброс */}
+            <div className="flex flex-col gap-1 ml-auto">
+              <span className="text-xs text-steel opacity-0 pointer-events-none">-</span>
+              <button onClick={handleReset} className="flex items-center gap-1.5 h-9 px-4 rounded-full border border-border text-sm text-steel hover:text-warning hover:border-warning transition-colors whitespace-nowrap">
                 <RotateCcw size={13} />
                 Сбросить
               </button>
             </div>
-        </div>
-        <div className="hidden sm:flex flex-wrap items-end gap-3">
-          {/* Блок 2 — Бюджет 
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-steel">Ваш бюджет на всех:</span>
-            <div className={`${pillFilled} gap-1.5`}>
-              <button
-                onClick={() => handleBudgetStep(-50)}
-                className="text-steel hover:text-brand transition-colors"
-              >
-                <Minus size={14} />
-              </button>
-              <span className="text-steel text-sm shrink-0">до</span>
-              <input
-                type="text"
-                value={budget}
-                onChange={e => handleBudgetChange(e.target.value.replace(/[^0-9]/g, ''))}
-                onBlur={handleBudgetBlur}
-                className="w-16 text-sm font-medium text-ink outline-none text-center bg-transparent"
-                placeholder="1000"
-              />
-              <span className="text-steel text-sm shrink-0">$/мес</span>
-              <button
-                onClick={() => handleBudgetStep(50)}
-                className="text-steel hover:text-brand transition-colors"
-              >
-                <Plus size={14} />
-              </button>
-            </div>
-          </div>*/}
+
+          </div>
         </div>
       </div>
-{/* Мобильная версия фильтра */}
-<div className="flex sm:hidden flex-col gap-3 bg-porcelain px-4 py-5">
 
-  {/* Кто переезжает */}
-  <div ref={travelersRef}>
-    <button
-      onClick={() => setTravelersOpen(p => !p)}
-      className="flex items-center justify-between w-full px-4 py-3.5 bg-white border border-border rounded-2xl shadow-sm hover:border-brand transition-colors"
-    >
-      <span className="text-xs text-steel">Кто переезжает</span>
-      <span className="text-sm font-medium text-ink">
-        {mobileTravelers.filter(t => t.type === 'adult').length} взр.
-        {mobileTravelers.filter(t => t.type === 'child').length > 0 && ` · ${mobileTravelers.filter(t => t.type === 'child').length} реб.`}
-        {' '}{[...new Set(mobileTravelers.map(t => CITIZENSHIPS.find(c => c.value === t.citizenship)?.flag ?? ''))].join(' ')}
-      </span>
-    </button>
+      {/* ===== МОБИЛКА / ПЛАНШЕТ / МАЛЕНЬКИЙ ПК (до xl) ===== */}
+      <div className="xl:hidden flex flex-col gap-3 bg-porcelain px-4 py-5">
 
-    {travelersOpen && (
-      <div className="mt-2 bg-white border border-border rounded-2xl shadow-sm p-4">
-        <div className="flex flex-col gap-2">
-          {mobileTravelers.map((t, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <span className="text-xs text-steel w-20 shrink-0">
-                {t.type === 'adult' ? 'Взр.' : AGE_GROUPS.find(a => a.value === t.ageGroup)?.label ?? 'Реб.'}
-              </span>
-              <select
-                value={t.citizenship}
-                onChange={e => setMobileTravelers(prev => prev.map((tr, idx) => idx === i ? { ...tr, citizenship: e.target.value } : tr))}
-                className="flex-1 h-8 px-2 rounded-lg border border-border text-xs text-ink outline-none focus:border-brand"
-              >
-                {CITIZENSHIPS.map(c => (
-                  <option key={c.value} value={c.value}>{c.flag} {c.label}</option>
+        {/* Кто переезжает */}
+        <div ref={mobileTravelersRef}>
+          <button
+            onClick={() => setMobileTravelersOpen(p => !p)}
+            className="flex items-center justify-between w-full px-4 py-3.5 bg-white border border-border rounded-2xl shadow-sm hover:border-brand transition-colors"
+          >
+            <span className="text-xs text-steel">Кто переезжает</span>
+            <span className="text-sm font-medium text-ink">
+              {mobileTravelers.filter(t => t.type === 'adult').length} взр.
+              {mobileTravelers.filter(t => t.type === 'child').length > 0 && ` · ${mobileTravelers.filter(t => t.type === 'child').length} реб.`}
+              {' '}{[...new Set(mobileTravelers.map(t => CITIZENSHIPS.find(c => c.value === t.citizenship)?.flag ?? ''))].join(' ')}
+            </span>
+          </button>
+
+          {mobileTravelersOpen && (
+            <div className="mt-2 bg-white border border-border rounded-2xl shadow-sm p-4">
+              <div className="flex flex-col gap-2">
+                {mobileTravelers.map((t, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="text-xs text-steel w-20 shrink-0">
+                      {t.type === 'adult' ? 'Взр.' : AGE_GROUPS.find(a => a.value === t.ageGroup)?.label ?? 'Реб.'}
+                    </span>
+                    <select
+                      value={t.citizenship}
+                      onChange={e => setMobileTravelers(prev => prev.map((tr, idx) => idx === i ? { ...tr, citizenship: e.target.value } : tr))}
+                      className="flex-1 h-8 px-2 rounded-lg border border-border text-xs text-ink outline-none focus:border-brand"
+                    >
+                      {CITIZENSHIPS.map(c => (
+                        <option key={c.value} value={c.value}>{c.flag} {c.label}</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => {
+                        if (mobileTravelers.length === 1) return
+                        setMobileTravelers(prev => prev.filter((_, idx) => idx !== i))
+                      }}
+                      disabled={mobileTravelers.length === 1}
+                      className="text-steel hover:text-warning disabled:opacity-30 transition-colors"
+                    >
+                      <Minus size={14} />
+                    </button>
+                  </div>
                 ))}
-              </select>
-              <button
-                onClick={() => {
-                  if (mobileTravelers.length === 1) return
-                  setMobileTravelers(prev => prev.filter((_, idx) => idx !== i))
-                }}
-                disabled={mobileTravelers.length === 1}
-                className="text-steel hover:text-warning disabled:opacity-30 transition-colors"
-              >
-                <Minus size={14} />
-              </button>
+                {mobileAgePickerOpen && (
+                  <div className="mt-2 pt-2 border-t border-border">
+                    <p className="text-xs text-steel mb-2">Возраст ребёнка:</p>
+                    <div className="flex flex-col gap-1">
+                      {AGE_GROUPS.map(ag => (
+                        <button
+                          key={ag.value}
+                          onClick={() => {
+                            setMobileTravelers(prev => [...prev, { type: 'child' as const, citizenship: 'RU', ageGroup: ag.value }])
+                            setMobileAgePickerOpen(false)
+                          }}
+                          className="text-left px-3 h-8 rounded-lg text-sm border border-border text-ink hover:border-brand hover:text-brand transition-all"
+                        >
+                          {ag.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-3 mt-3 pt-3 border-t border-border">
+                <button onClick={() => setMobileTravelers(prev => [...prev, { type: 'adult' as const, citizenship: 'RU' }])} className="flex items-center gap-1 text-xs text-brand hover:text-positive transition-colors">
+                  <Plus size={12} /> Взрослый
+                </button>
+                <button onClick={() => setMobileAgePickerOpen(true)} className="flex items-center gap-1 text-xs text-brand hover:text-positive transition-colors">
+                  <Plus size={12} /> Ребёнок
+                </button>
+              </div>
             </div>
-          ))}
-          {agePickerOpen && (
-            <div className="mt-2 pt-2 border-t border-border">
-              <p className="text-xs text-steel mb-2">Возраст ребёнка:</p>
-              <div className="flex flex-col gap-1">
-                {AGE_GROUPS.map(ag => (
+          )}
+        </div>
+
+        {/* Тип жилья */}
+        <div ref={mobileHousingRef}>
+          <button
+            onClick={() => setMobileHousingOpen(p => !p)}
+            className="flex items-center justify-between w-full px-4 py-3.5 bg-white border border-border rounded-2xl shadow-sm hover:border-brand transition-colors"
+          >
+            <span className="text-xs text-steel">Тип жилья</span>
+            <span className="text-sm font-medium text-ink">
+              {HOUSING_TYPES.find(h => h.value === mobileHousingType)?.label}
+              {' · '}
+              {(mobileHousingType === 'house' ? BEDROOM_OPTIONS_HOUSE : BEDROOM_OPTIONS_APARTMENT).find(b => b.value === mobileBedrooms)?.label}
+            </span>
+          </button>
+
+          {mobileHousingOpen && (
+            <div className="mt-2 bg-white border border-border rounded-2xl shadow-sm p-4">
+              <p className="text-xs text-steel mb-2">Тип жилья</p>
+              <div className="flex gap-2 mb-3">
+                {HOUSING_TYPES.map(h => (
                   <button
-                    key={ag.value}
+                    key={h.value}
                     onClick={() => {
-                      setMobileTravelers(prev => [...prev, { type: 'child' as const, citizenship: 'RU', ageGroup: ag.value }])
-                      setAgePickerOpen(false)
+                      setMobileHousingType(h.value)
+                      if (h.value === 'house' && mobileBedrooms === '0') setMobileBedrooms('1')
                     }}
-                    className="text-left px-3 h-8 rounded-lg text-sm border border-border text-ink hover:border-brand hover:text-brand transition-all"
+                    className={`flex-1 h-9 rounded-xl text-sm border transition-all ${mobileHousingType === h.value ? 'bg-brand border-brand text-white' : 'border-border text-ink hover:border-brand hover:text-brand'}`}
                   >
-                    {ag.label}
+                    {h.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-steel mb-2">Спальни</p>
+              <div className="flex gap-2">
+                {(mobileHousingType === 'house' ? BEDROOM_OPTIONS_HOUSE : BEDROOM_OPTIONS_APARTMENT).map(b => (
+                  <button
+                    key={b.value}
+                    onClick={() => setMobileBedrooms(b.value)}
+                    className={`flex-1 h-9 rounded-xl text-sm border transition-all ${mobileBedrooms === b.value ? 'bg-brand border-brand text-white' : 'border-border text-ink hover:border-brand hover:text-brand'}`}
+                  >
+                    {b.label}
                   </button>
                 ))}
               </div>
             </div>
           )}
         </div>
-        <div className="flex gap-3 mt-3 pt-3 border-t border-border">
-          <button
-            onClick={() => setMobileTravelers(prev => [...prev, { type: 'adult' as const, citizenship: 'RU' }])}
-            className="flex items-center gap-1 text-xs text-brand hover:text-positive transition-colors"
-          >
-            <Plus size={12} /> Взрослый
-          </button>
-          <button
-            onClick={() => setAgePickerOpen(true)}
-            className="flex items-center gap-1 text-xs text-brand hover:text-positive transition-colors"
-          >
-            <Plus size={12} /> Ребёнок
-          </button>
-        </div>
-      </div>
-    )}
-  </div>
 
-  {/* Тип жилья */}
-  <div ref={housingRef}>
-    <button
-      onClick={() => setHousingOpen(p => !p)}
-      className="flex items-center justify-between w-full px-4 py-3.5 bg-white border border-border rounded-2xl shadow-sm hover:border-brand transition-colors"
-    >
-      <span className="text-xs text-steel">Тип жилья</span>
-      <span className="text-sm font-medium text-ink">
-        {HOUSING_TYPES.find(h => h.value === mobileHousingType)?.label}
-        {' · '}
-        {(mobileHousingType === 'house' ? BEDROOM_OPTIONS_HOUSE : BEDROOM_OPTIONS_APARTMENT).find(b => b.value === mobileBedrooms)?.label}
-      </span>
-    </button>
-
-    {housingOpen && (
-      <div className="mt-2 bg-white border border-border rounded-2xl shadow-sm p-4">
-        <p className="text-xs text-steel mb-2">Тип жилья</p>
-        <div className="flex gap-2 mb-3">
-          {HOUSING_TYPES.map(h => (
-            <button
-              key={h.value}
-              onClick={() => {
-                setMobileHousingType(h.value)
-                if (h.value === 'house' && mobileBedrooms === '0') setMobileBedrooms('1')
-              }}
-              className={`flex-1 h-9 rounded-xl text-sm border transition-all ${
-                mobileHousingType === h.value
-                  ? 'bg-brand border-brand text-white'
-                  : 'border-border text-ink hover:border-brand hover:text-brand'
-              }`}
-            >
-              {h.label}
-            </button>
-          ))}
+        {/* Стиль жизни */}
+        <div className="flex items-center justify-between px-4 py-3.5 bg-white border border-border rounded-2xl shadow-sm">
+          <span className="text-xs text-steel shrink-0">Стиль жизни</span>
+          <div className="flex gap-1 p-1 border border-brand rounded-full">
+            {LIFESTYLE_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setMobileLifestyle(opt.value)}
+                className={`px-2.5 h-7 rounded-full text-xs transition-all whitespace-nowrap ${mobileLifestyle === opt.value ? 'bg-brand text-white font-medium' : 'text-steel hover:text-ink'}`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <p className="text-xs text-steel mb-2">Спальни</p>
-        <div className="flex gap-2">
-          {(mobileHousingType === 'house' ? BEDROOM_OPTIONS_HOUSE : BEDROOM_OPTIONS_APARTMENT).map(b => (
-            <button
-              key={b.value}
-              onClick={() => setMobileBedrooms(b.value)}
-              className={`flex-1 h-9 rounded-xl text-sm border transition-all ${
-                mobileBedrooms === b.value
-                  ? 'bg-brand border-brand text-white'
-                  : 'border-border text-ink hover:border-brand hover:text-brand'
-              }`}
-            >
-              {b.label}
-            </button>
-          ))}
-        </div>
-      </div>
-    )}
-  </div>
 
-  {/* Стиль жизни */}
-  <div className="flex items-center justify-between px-4 py-3.5 bg-white border border-border rounded-2xl shadow-sm">
-    <span className="text-xs text-steel shrink-0">Стиль жизни</span>
-    <div className="flex gap-1 p-1 border border-brand rounded-full">
-      {LIFESTYLE_OPTIONS.map(opt => (
+        {/* Расширенные фильтры */}
         <button
-          key={opt.value}
-          onClick={() => setMobileLifestyle(opt.value)}
-          className={`px-2.5 h-7 rounded-full text-xs transition-all whitespace-nowrap ${
-            mobileLifestyle === opt.value
-              ? 'bg-brand text-white font-medium'
-              : 'text-steel hover:text-ink'
-          }`}
+          onClick={() => setMobileFiltersOpen(true)}
+          className="w-full h-11 rounded-2xl border border-border bg-white shadow-sm text-sm text-steel hover:border-brand hover:text-brand transition-colors"
         >
-          {opt.label}
+          Расширенные фильтры
         </button>
-      ))}
-    </div>
-  </div>
 
-  {/* Расширенные фильтры */}
-  <button
-    onClick={() => setMobileFiltersOpen(true)}
-    className="w-full h-11 rounded-2xl border border-border bg-white shadow-sm text-sm text-steel hover:border-brand hover:text-brand transition-colors"
-  >
-    Расширенные фильтры
-  </button>
+        {/* Очистить + Применить */}
+        <div className="flex gap-2">
+          <button onClick={resetMobileFilter} className="flex-1 h-11 rounded-2xl border border-border bg-white text-sm text-steel hover:border-warning hover:text-warning transition-colors">
+            Очистить
+          </button>
+          <button onClick={applyMobileFilter} className="flex-1 h-11 rounded-2xl bg-brand text-white text-sm font-medium hover:bg-positive transition-colors">
+            Применить
+          </button>
+        </div>
 
-  {/* Очистить + Применить */}
-  <div className="flex gap-2">
-    <button
-      onClick={resetMobileFilter}
-      className="flex-1 h-11 rounded-2xl border border-border bg-white text-sm text-steel hover:border-warning hover:text-warning transition-colors"
-    >
-      Очистить
-    </button>
-    <button
-      onClick={applyMobileFilter}
-      className="flex-1 h-11 rounded-2xl bg-brand text-white text-sm font-medium hover:bg-positive transition-colors"
-    >
-      Применить
-    </button>
-  </div>
-
-</div>
+      </div>
 
       {/* Fullscreen модал */}
       {mobileFiltersOpen && (
         <div className="fixed inset-0 bg-white z-50 flex flex-col">
           <div className="flex items-center justify-between p-4 border-b border-border">
             <h2 className="text-lg font-semibold text-ink">Фильтры</h2>
-            <button
-              onClick={() => setMobileFiltersOpen(false)}
-              className="text-steel hover:text-ink transition-colors"
-            >
+            <button onClick={() => setMobileFiltersOpen(false)} className="text-steel hover:text-ink transition-colors">
               <X size={22} />
             </button>
           </div>
@@ -761,21 +629,16 @@ export function QuickFilter() {
             <p className="text-steel text-sm">Расширенный фильтр появится здесь</p>
           </div>
           <div className="flex gap-3 p-4 border-t border-border">
-            <button
-              onClick={() => { handleReset(); setMobileFiltersOpen(false) }}
-              className="flex-1 h-11 rounded-xl border border-border text-sm text-steel hover:border-warning hover:text-warning transition-colors"
-            >
+            <button onClick={() => { handleReset(); setMobileFiltersOpen(false) }} className="flex-1 h-11 rounded-xl border border-border text-sm text-steel hover:border-warning hover:text-warning transition-colors">
               Сбросить
             </button>
-            <button
-              onClick={() => setMobileFiltersOpen(false)}
-              className="flex-1 h-11 rounded-xl bg-brand text-white text-sm font-medium hover:bg-positive transition-colors"
-            >
+            <button onClick={() => setMobileFiltersOpen(false)} className="flex-1 h-11 rounded-xl bg-brand text-white text-sm font-medium hover:bg-positive transition-colors">
               Применить
             </button>
           </div>
         </div>
-      )}   
+      )}
+
     </div>
   )
 }
