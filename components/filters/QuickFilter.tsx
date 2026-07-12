@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSearchParams } from 'next/navigation'
-import { Users, Home, Leaf, Stamp, ChevronDown, Plus, Minus, RotateCcw, X } from 'lucide-react'
+import { Users, Home, Leaf, Stamp, ChevronDown, Plus, Minus, RotateCcw, X, Smile, Wallet } from 'lucide-react'
 
 type AgeGroup = 'baby' | 'toddler' | 'school'
 
@@ -67,7 +67,7 @@ export function QuickFilter() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const [budget, setBudget] = useState(searchParams.get('budget') ?? '1000')
+  const [budget, setBudget] = useState(searchParams.get('budget') ?? '')
   const [housingType, setHousingType] = useState(searchParams.get('housing_type') ?? 'apartment')
   const [bedrooms, setBedrooms] = useState(searchParams.get('bedrooms') ?? '0')
   const [climateSelected, setClimateSelected] = useState<string[]>(
@@ -117,6 +117,7 @@ export function QuickFilter() {
   const [mobileHousingType, setMobileHousingType] = useState(housingType)
   const [mobileBedrooms, setMobileBedrooms] = useState(bedrooms)
   const [mobileLifestyle, setMobileLifestyle] = useState(lifestyle)
+  const [mobileBudget, setMobileBudget] = useState(budget)
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -127,8 +128,8 @@ export function QuickFilter() {
       if (mobileTravelersRef.current && !mobileTravelersRef.current.contains(e.target as Node)) setMobileTravelersOpen(false)
       if (mobileHousingRef.current && !mobileHousingRef.current.contains(e.target as Node)) setMobileHousingOpen(false)
     }
-    document.addEventListener('click', handleClick)
-    return () => document.removeEventListener('click', handleClick)
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
   const applyFilter = useCallback((overrides: Partial<{
@@ -227,7 +228,7 @@ export function QuickFilter() {
   }
 
   function handleReset() {
-    setBudget('1000')
+    setBudget('')
     setHousingType('apartment')
     setBedrooms('0')
     setClimateSelected([])
@@ -243,19 +244,42 @@ export function QuickFilter() {
     setHousingType(mobileHousingType)
     setBedrooms(mobileBedrooms)
     setLifestyle(mobileLifestyle)
+    setBudget(mobileBudget)
     applyFilter({
       travelers: mobileTravelers,
       housingType: mobileHousingType,
       bedrooms: mobileBedrooms,
       lifestyle: mobileLifestyle,
+      budget: mobileBudget,
     })
   }
 
   function resetMobileFilter() {
-    setMobileTravelers([{ type: 'adult', citizenship: 'RU' }])
-    setMobileHousingType('apartment')
-    setMobileBedrooms('0')
-    setMobileLifestyle('comfort')
+    const defaultTravelers: Traveler[] = [{ type: 'adult', citizenship: 'RU' }]
+    const defaultHousingType = 'apartment'
+    const defaultBedrooms = '0'
+    const defaultLifestyle = 'comfort'
+    const defaultBudget = ''
+  
+    setMobileTravelers(defaultTravelers)
+    setMobileHousingType(defaultHousingType)
+    setMobileBedrooms(defaultBedrooms)
+    setMobileLifestyle(defaultLifestyle)
+    setMobileBudget(defaultBudget)
+  
+    setTravelers(defaultTravelers)
+    setHousingType(defaultHousingType)
+    setBedrooms(defaultBedrooms)
+    setLifestyle(defaultLifestyle)
+    setBudget(defaultBudget)
+  
+    applyFilter({
+      travelers: defaultTravelers,
+      housingType: defaultHousingType,
+      bedrooms: defaultBedrooms,
+      lifestyle: defaultLifestyle,
+      budget: defaultBudget,
+    })
   }
 
   function travelersLabel() {
@@ -286,8 +310,8 @@ export function QuickFilter() {
   return (
     <div className="bg-white border-b border-border">
 
-      {/* ===== ДЕСКТОП (xl+) ===== */}
-      <div className="hidden xl:block">
+      {/* ===== ДЕСКТОП (lg+) ===== */}
+      <div className="hidden lg:block">
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-wrap items-end gap-3">
 
@@ -394,6 +418,37 @@ export function QuickFilter() {
 
             <div className="h-9 w-px bg-border self-end shrink-0" />
 
+          {/* Бюджет */}
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-steel">Ежемесячный бюджет:</span>
+            <div className={`${pillFilled} gap-1.5`}>
+              <button
+                onClick={() => setBudget(v => String(Math.max(0, (parseInt(v) || 0) - 50)))}
+                className="text-steel hover:text-brand transition-colors"
+              >
+                <Minus size={14} />
+              </button>
+              <span className="text-steel text-sm shrink-0">до</span>
+              <input
+                type="text"
+                value={budget}
+                onChange={e => {
+                  const val = e.target.value.replace(/[^0-9]/g, '')
+                  setBudget(val)
+                }}
+                className="w-16 text-sm font-medium text-ink outline-none text-center bg-transparent"
+                placeholder="1000"
+              />
+              <span className="text-steel text-sm shrink-0">$/мес</span>
+              <button
+                onClick={() => setBudget(v => String(Math.min(20000, (parseInt(v) || 0) + 50)))}
+                className="text-steel hover:text-brand transition-colors"
+              >
+                <Plus size={14} />
+              </button>
+            </div>
+          </div>
+
             {/* Климат */}
             <div className="flex flex-col gap-1" ref={climateRef}>
               <span className="text-xs text-steel opacity-0 pointer-events-none">-</span>
@@ -455,165 +510,213 @@ export function QuickFilter() {
         </div>
       </div>
 
-      {/* ===== МОБИЛКА / ПЛАНШЕТ / МАЛЕНЬКИЙ ПК (до xl) ===== */}
-      <div className="xl:hidden flex flex-col gap-3 bg-porcelain px-4 py-5">
+      {/* ===== МОБИЛКА / ПЛАНШЕТ / МАЛЕНЬКИЙ ПК (до lg) ===== */}
+      <div className="lg:hidden flex flex-col gap-3 bg-porcelain px-5 py-5">
+        <div className="container flex flex-col gap-3 mx-auto bg-white rounded-2xl px-10 py-10 shadow-sm">
+          {/* Кто переезжает */}
+          <div ref={mobileTravelersRef}>
+            <button
+              onClick={() => setMobileTravelersOpen(p => !p)}
+              className="flex items-center justify-between w-full px-4 py-3.5 bg-white border border-border rounded-2xl hover:border-brand transition-colors"
+            >
+              <div className="flex items-center gap-2"> 
+                <Users size={14} className="text-brand shrink-0" />
+                <span className="text-sm text-steel">
+                 Кто переезжает
+                </span>              
+              </div>
 
-        {/* Кто переезжает */}
-        <div ref={mobileTravelersRef}>
-          <button
-            onClick={() => setMobileTravelersOpen(p => !p)}
-            className="flex items-center justify-between w-full px-4 py-3.5 bg-white border border-border rounded-2xl shadow-sm hover:border-brand transition-colors"
-          >
-            <span className="text-xs text-steel">Кто переезжает</span>
-            <span className="text-sm font-medium text-ink">
-              {mobileTravelers.filter(t => t.type === 'adult').length} взр.
-              {mobileTravelers.filter(t => t.type === 'child').length > 0 && ` · ${mobileTravelers.filter(t => t.type === 'child').length} реб.`}
-              {' '}{[...new Set(mobileTravelers.map(t => CITIZENSHIPS.find(c => c.value === t.citizenship)?.flag ?? ''))].join(' ')}
-            </span>
-          </button>
+              <span className="text-sm font-medium text-ink">
+                {mobileTravelers.filter(t => t.type === 'adult').length} взр.
+                {mobileTravelers.filter(t => t.type === 'child').length > 0 && ` · ${mobileTravelers.filter(t => t.type === 'child').length} реб.`}
+                {' '}{[...new Set(mobileTravelers.map(t => CITIZENSHIPS.find(c => c.value === t.citizenship)?.flag ?? ''))].join(' ')}
+              </span>
+            </button>
 
-          {mobileTravelersOpen && (
-            <div className="mt-2 bg-white border border-border rounded-2xl shadow-sm p-4">
-              <div className="flex flex-col gap-2">
-                {mobileTravelers.map((t, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <span className="text-xs text-steel w-20 shrink-0">
-                      {t.type === 'adult' ? 'Взр.' : AGE_GROUPS.find(a => a.value === t.ageGroup)?.label ?? 'Реб.'}
-                    </span>
-                    <select
-                      value={t.citizenship}
-                      onChange={e => setMobileTravelers(prev => prev.map((tr, idx) => idx === i ? { ...tr, citizenship: e.target.value } : tr))}
-                      className="flex-1 h-8 px-2 rounded-lg border border-border text-xs text-ink outline-none focus:border-brand"
-                    >
-                      {CITIZENSHIPS.map(c => (
-                        <option key={c.value} value={c.value}>{c.flag} {c.label}</option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={() => {
-                        if (mobileTravelers.length === 1) return
-                        setMobileTravelers(prev => prev.filter((_, idx) => idx !== i))
-                      }}
-                      disabled={mobileTravelers.length === 1}
-                      className="text-steel hover:text-warning disabled:opacity-30 transition-colors"
-                    >
-                      <Minus size={14} />
-                    </button>
-                  </div>
-                ))}
-                {mobileAgePickerOpen && (
-                  <div className="mt-2 pt-2 border-t border-border">
-                    <p className="text-xs text-steel mb-2">Возраст ребёнка:</p>
-                    <div className="flex flex-col gap-1">
-                      {AGE_GROUPS.map(ag => (
-                        <button
-                          key={ag.value}
-                          onClick={() => {
-                            setMobileTravelers(prev => [...prev, { type: 'child' as const, citizenship: 'RU', ageGroup: ag.value }])
-                            setMobileAgePickerOpen(false)
-                          }}
-                          className="text-left px-3 h-8 rounded-lg text-sm border border-border text-ink hover:border-brand hover:text-brand transition-all"
-                        >
-                          {ag.label}
-                        </button>
-                      ))}
+            {mobileTravelersOpen && (
+              <div className="mt-2 bg-white border border-border rounded-2xl p-4">
+                <div className="flex flex-col gap-2">
+                  {mobileTravelers.map((t, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="text-xs text-steel w-20 shrink-0">
+                        {t.type === 'adult' ? 'Взр.' : AGE_GROUPS.find(a => a.value === t.ageGroup)?.label ?? 'Реб.'}
+                      </span>
+                      <select
+                        value={t.citizenship}
+                        onChange={e => setMobileTravelers(prev => prev.map((tr, idx) => idx === i ? { ...tr, citizenship: e.target.value } : tr))}
+                        className="flex-1 h-8 px-2 rounded-lg border border-border text-xs text-ink outline-none focus:border-brand"
+                      >
+                        {CITIZENSHIPS.map(c => (
+                          <option key={c.value} value={c.value}>{c.flag} {c.label}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => {
+                          if (mobileTravelers.length === 1) return
+                          setMobileTravelers(prev => prev.filter((_, idx) => idx !== i))
+                        }}
+                        disabled={mobileTravelers.length === 1}
+                        className="text-steel hover:text-warning disabled:opacity-30 transition-colors"
+                      >
+                        <Minus size={14} />
+                      </button>
                     </div>
-                  </div>
-                )}
+                  ))}
+                  {mobileAgePickerOpen && (
+                    <div className="mt-2 pt-2 border-t border-border">
+                      <p className="text-xs text-steel mb-2">Возраст ребёнка:</p>
+                      <div className="flex flex-col gap-1">
+                        {AGE_GROUPS.map(ag => (
+                          <button
+                            key={ag.value}
+                            onClick={() => {
+                              setMobileTravelers(prev => [...prev, { type: 'child' as const, citizenship: 'RU', ageGroup: ag.value }])
+                              setMobileAgePickerOpen(false)
+                            }}
+                            className="text-left px-3 h-8 rounded-lg text-sm border border-border text-ink hover:border-brand hover:text-brand transition-all"
+                          >
+                            {ag.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-3 mt-3 pt-3 border-t border-border">
+                  <button onClick={() => setMobileTravelers(prev => [...prev, { type: 'adult' as const, citizenship: 'RU' }])} className="flex items-center gap-1 text-xs text-brand hover:text-positive transition-colors">
+                    <Plus size={12} /> Взрослый
+                  </button>
+                  <button onClick={() => setMobileAgePickerOpen(true)} className="flex items-center gap-1 text-xs text-brand hover:text-positive transition-colors">
+                    <Plus size={12} /> Ребёнок
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-3 mt-3 pt-3 border-t border-border">
-                <button onClick={() => setMobileTravelers(prev => [...prev, { type: 'adult' as const, citizenship: 'RU' }])} className="flex items-center gap-1 text-xs text-brand hover:text-positive transition-colors">
-                  <Plus size={12} /> Взрослый
-                </button>
-                <button onClick={() => setMobileAgePickerOpen(true)} className="flex items-center gap-1 text-xs text-brand hover:text-positive transition-colors">
-                  <Plus size={12} /> Ребёнок
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        {/* Тип жилья */}
-        <div ref={mobileHousingRef}>
+          {/* Тип жилья */}
+          <div ref={mobileHousingRef}>
+            <button
+              onClick={() => setMobileHousingOpen(p => !p)}
+              className="flex items-center justify-between w-full px-4 py-3.5 bg-white border border-border rounded-2xl hover:border-brand transition-colors"
+            >
+              <div className="flex items-center gap-2"> 
+                <Home size={14} className="text-brand shrink-0" />
+                <span className="text-sm text-steel">
+                  Тип жилья
+                </span>
+              </div>
+              <span className="text-sm font-medium text-ink">
+                {HOUSING_TYPES.find(h => h.value === mobileHousingType)?.label}
+                {' · '}
+                {(mobileHousingType === 'house' ? BEDROOM_OPTIONS_HOUSE : BEDROOM_OPTIONS_APARTMENT).find(b => b.value === mobileBedrooms)?.label}
+              </span>
+            </button>
+
+            {mobileHousingOpen && (
+              <div className="mt-2 bg-white border border-border rounded-2xl p-4">
+                <p className="text-xs text-steel mb-2">Тип жилья</p>
+                <div className="flex gap-2 mb-3">
+                  {HOUSING_TYPES.map(h => (
+                    <button
+                      key={h.value}
+                      onClick={() => {
+                        setMobileHousingType(h.value)
+                        if (h.value === 'house' && mobileBedrooms === '0') setMobileBedrooms('1')
+                      }}
+                      className={`flex-1 h-9 rounded-xl text-sm border transition-all ${mobileHousingType === h.value ? 'bg-brand border-brand text-white' : 'border-border text-ink hover:border-brand hover:text-brand'}`}
+                    >
+                      {h.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-steel mb-2">Спальни</p>
+                <div className="flex gap-2">
+                  {(mobileHousingType === 'house' ? BEDROOM_OPTIONS_HOUSE : BEDROOM_OPTIONS_APARTMENT).map(b => (
+                    <button
+                      key={b.value}
+                      onClick={() => setMobileBedrooms(b.value)}
+                      className={`flex-1 h-9 rounded-xl text-sm border transition-all ${mobileBedrooms === b.value ? 'bg-brand border-brand text-white' : 'border-border text-ink hover:border-brand hover:text-brand'}`}
+                    >
+                      {b.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Стиль жизни */}
+          <div className="flex items-center justify-between  bg-white ">
+            <div className="flex px-4 items-center gap-2"> 
+              <Smile size={14} className="text-brand shrink-0" />
+              <span className="text-sm text-steel shrink-0">Стиль жизни</span>
+            </div>
+            <div className="flex gap-1 p-1.5 border border-brand rounded-2xl">
+              {LIFESTYLE_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setMobileLifestyle(opt.value)}
+                  className={`px-3 h-9 rounded-full text-sm transition-all whitespace-nowrap ${mobileLifestyle === opt.value ? 'bg-brand text-white font-medium' : ' hover:text-ink'}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Бюджет */}
+          <div className="flex items-center justify-between px-4 py-3.5 bg-white border border-border rounded-2xl">
+            <div className="flex items-center gap-2">
+              <Wallet size={14} className="text-brand shrink-0" />
+              <span className="text-sm text-steel">Бюджет</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setMobileBudget(v => String(Math.max(0, (parseInt(v) || 0) - 50)))}
+                className="hover:text-brand transition-colors"
+              >
+                <Minus size={14} />
+              </button>
+              <span className=" text-sm text-steel shrink-0">до</span>
+              <input
+                type="text"
+                value={mobileBudget}
+                onChange={e => {
+                  const val = e.target.value.replace(/[^0-9]/g, '')
+                  setMobileBudget(val)
+                }}
+                className="w-14 text-sm font-medium text-ink outline-none text-center bg-transparent"
+                placeholder="0"
+              />
+              <span className="text-sm shrink-0 text-steel">$/мес</span>
+              <button
+                onClick={() => setMobileBudget(v => String(Math.min(20000, (parseInt(v) || 0) + 50)))}
+                className="hover:text-brand transition-colors"
+              >
+                <Plus size={14} />
+              </button>
+            </div>
+          </div>
+
+          {/* Расширенные фильтры */}
           <button
-            onClick={() => setMobileHousingOpen(p => !p)}
-            className="flex items-center justify-between w-full px-4 py-3.5 bg-white border border-border rounded-2xl shadow-sm hover:border-brand transition-colors"
+            onClick={() => setMobileFiltersOpen(true)}
+            className="w-full h-11 rounded-2xl border border-border bg-white text-sm text-steel hover:border-brand hover:text-brand transition-colors"
           >
-            <span className="text-xs text-steel">Тип жилья</span>
-            <span className="text-sm font-medium text-ink">
-              {HOUSING_TYPES.find(h => h.value === mobileHousingType)?.label}
-              {' · '}
-              {(mobileHousingType === 'house' ? BEDROOM_OPTIONS_HOUSE : BEDROOM_OPTIONS_APARTMENT).find(b => b.value === mobileBedrooms)?.label}
-            </span>
+            Расширенные фильтры
           </button>
 
-          {mobileHousingOpen && (
-            <div className="mt-2 bg-white border border-border rounded-2xl shadow-sm p-4">
-              <p className="text-xs text-steel mb-2">Тип жилья</p>
-              <div className="flex gap-2 mb-3">
-                {HOUSING_TYPES.map(h => (
-                  <button
-                    key={h.value}
-                    onClick={() => {
-                      setMobileHousingType(h.value)
-                      if (h.value === 'house' && mobileBedrooms === '0') setMobileBedrooms('1')
-                    }}
-                    className={`flex-1 h-9 rounded-xl text-sm border transition-all ${mobileHousingType === h.value ? 'bg-brand border-brand text-white' : 'border-border text-ink hover:border-brand hover:text-brand'}`}
-                  >
-                    {h.label}
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-steel mb-2">Спальни</p>
-              <div className="flex gap-2">
-                {(mobileHousingType === 'house' ? BEDROOM_OPTIONS_HOUSE : BEDROOM_OPTIONS_APARTMENT).map(b => (
-                  <button
-                    key={b.value}
-                    onClick={() => setMobileBedrooms(b.value)}
-                    className={`flex-1 h-9 rounded-xl text-sm border transition-all ${mobileBedrooms === b.value ? 'bg-brand border-brand text-white' : 'border-border text-ink hover:border-brand hover:text-brand'}`}
-                  >
-                    {b.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Стиль жизни */}
-        <div className="flex items-center justify-between px-4 py-3.5 bg-white border border-border rounded-2xl shadow-sm">
-          <span className="text-xs text-steel shrink-0">Стиль жизни</span>
-          <div className="flex gap-1 p-1 border border-brand rounded-full">
-            {LIFESTYLE_OPTIONS.map(opt => (
-              <button
-                key={opt.value}
-                onClick={() => setMobileLifestyle(opt.value)}
-                className={`px-2.5 h-7 rounded-full text-xs transition-all whitespace-nowrap ${mobileLifestyle === opt.value ? 'bg-brand text-white font-medium' : 'text-steel hover:text-ink'}`}
-              >
-                {opt.label}
-              </button>
-            ))}
+          {/* Очистить + Применить */}
+          <div className="flex items-center gap-2">
+            <button onClick={resetMobileFilter} className="flex-1 flex items-center justify-center gap-2 h-11 rounded-2xl border border-border bg-white text-sm text-steel hover:border-warning hover:text-warning transition-colors">
+              <RotateCcw size={14} />
+              <span>Очистить</span>
+            </button>
+            <button onClick={applyMobileFilter} className="flex-1 flex items-center justify-center gap-2 h-11 rounded-2xl bg-brand text-white text-sm font-medium hover:bg-positive transition-colors">
+              Применить
+            </button>
           </div>
         </div>
-
-        {/* Расширенные фильтры */}
-        <button
-          onClick={() => setMobileFiltersOpen(true)}
-          className="w-full h-11 rounded-2xl border border-border bg-white shadow-sm text-sm text-steel hover:border-brand hover:text-brand transition-colors"
-        >
-          Расширенные фильтры
-        </button>
-
-        {/* Очистить + Применить */}
-        <div className="flex gap-2">
-          <button onClick={resetMobileFilter} className="flex-1 h-11 rounded-2xl border border-border bg-white text-sm text-steel hover:border-warning hover:text-warning transition-colors">
-            Очистить
-          </button>
-          <button onClick={applyMobileFilter} className="flex-1 h-11 rounded-2xl bg-brand text-white text-sm font-medium hover:bg-positive transition-colors">
-            Применить
-          </button>
-        </div>
-
       </div>
 
       {/* Fullscreen модал */}
