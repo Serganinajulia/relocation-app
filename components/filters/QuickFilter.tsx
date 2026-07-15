@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSearchParams } from 'next/navigation'
-import { Users, Home, Leaf, Stamp, ChevronDown, Plus, Minus, RotateCcw, X, Smile, Wallet, Pencil, Trash2 } from 'lucide-react'
+import { Users, Home, ChevronDown, Plus, Minus, RotateCcw, X, Smile, Wallet, Pencil, Trash2 } from 'lucide-react'
 import { type LifeStyle, type LifestyleOverrides, resolveOverrides } from '@/lib/calc/formulas'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { CounterField, ServiceModeField, CheckboxField, LifestyleLevelField, HousingLevelField } from '@/components/filters/CustomLifestyleFields'
@@ -74,10 +74,6 @@ export function QuickFilter() {
   const [budget, setBudget] = useState(searchParams.get('budget') ?? '')
   const [housingType, setHousingType] = useState(searchParams.get('housing_type') ?? 'apartment')
   const [bedrooms, setBedrooms] = useState(searchParams.get('bedrooms') ?? '0')
-  const [climateSelected, setClimateSelected] = useState<string[]>(
-    searchParams.get('climate')?.split(',').filter(Boolean) ?? []
-  )
-  const [conditionsSelected, setConditionsSelected] = useState<string[]>([])
   const [lifestyle, setLifestyle] = useState<LifeStyle>((searchParams.get('lifestyle') as LifeStyle) ?? 'comfort')
   // Кастомный стиль стейт
   const [customModalOpen, setCustomModalOpen] = useState(false)
@@ -109,8 +105,6 @@ export function QuickFilter() {
   // Desktop dropdown states
   const [travelersOpen, setTravelersOpen] = useState(false)
   const [housingOpen, setHousingOpen] = useState(false)
-  const [climateOpen, setClimateOpen] = useState(false)
-  const [conditionsOpen, setConditionsOpen] = useState(false)
   const [agePickerOpen, setAgePickerOpen] = useState(false)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
@@ -122,8 +116,6 @@ export function QuickFilter() {
   // Desktop refs
   const travelersRef = useRef<HTMLDivElement>(null)
   const housingRef = useRef<HTMLDivElement>(null)
-  const climateRef = useRef<HTMLDivElement>(null)
-  const conditionsRef = useRef<HTMLDivElement>(null)
 
   // Mobile refs
   const mobileTravelersRef = useRef<HTMLDivElement>(null)
@@ -140,8 +132,6 @@ export function QuickFilter() {
     function handleClick(e: MouseEvent) {
       if (travelersRef.current && !travelersRef.current.contains(e.target as Node)) setTravelersOpen(false)
       if (housingRef.current && !housingRef.current.contains(e.target as Node)) setHousingOpen(false)
-      if (climateRef.current && !climateRef.current.contains(e.target as Node)) setClimateOpen(false)
-      if (conditionsRef.current && !conditionsRef.current.contains(e.target as Node)) setConditionsOpen(false)
       if (mobileTravelersRef.current && !mobileTravelersRef.current.contains(e.target as Node)) setMobileTravelersOpen(false)
       if (mobileHousingRef.current && !mobileHousingRef.current.contains(e.target as Node)) setMobileHousingOpen(false)
     }
@@ -149,41 +139,36 @@ export function QuickFilter() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  const applyFilter = useCallback((overrides: Partial<{
-    budget: string
-    housingType: string
-    bedrooms: string
-    climateSelected: string[]
-    conditionsSelected: string[]
-    lifestyle?: LifeStyle
-    travelers: Traveler[]
-  }> = {}) => {
-    const b = overrides.budget ?? budget
-    const ht = overrides.housingType ?? housingType
-    const bd = overrides.bedrooms ?? bedrooms
-    const cl = overrides.climateSelected ?? climateSelected
-    const cond = overrides.conditionsSelected ?? conditionsSelected
-    const tr = overrides.travelers ?? travelers
-    const ls = overrides.lifestyle ?? lifestyle
+const applyFilter = useCallback((overrides: Partial<{
+  budget: string
+  housingType: string
+  bedrooms: string
+  lifestyle?: LifeStyle
+  travelers: Traveler[]
+}> = {}) => {
+  const b = overrides.budget ?? budget
+  const ht = overrides.housingType ?? housingType
+  const bd = overrides.bedrooms ?? bedrooms
+  const tr = overrides.travelers ?? travelers
+  const ls = overrides.lifestyle ?? lifestyle
 
-    const params = new URLSearchParams()
-    const budgetNum = parseInt(b)
-    if (!isNaN(budgetNum) && budgetNum > 0) params.set('budget', String(budgetNum))
-    params.set('housing_type', ht)
-    params.set('bedrooms', bd)
-    params.set('lifestyle', ls)
-    if (cl.length) params.set('climate', cl.join(','))
-    cond.forEach(c => params.set(c, '1'))
-    const citizenships = [...new Set(tr.map(t => t.citizenship))]
-    params.set('citizenships', citizenships.join(','))
-    params.set('adults', String(tr.filter(t => t.type === 'adult').length))
-    const childrenList = tr.filter(t => t.type === 'child')
-    params.set('children', String(childrenList.length))
-    params.set('has_baby', String(childrenList.some(c => c.ageGroup === 'baby')))
-    params.set('kids_in_kindergarten', String(childrenList.filter(c => c.ageGroup === 'toddler').length))
-    params.set('kids_in_school', String(childrenList.filter(c => c.ageGroup === 'school').length))
-    router.replace(`/?${params.toString()}`)
-  }, [budget, housingType, bedrooms, climateSelected, conditionsSelected, travelers, lifestyle, router])
+  const params = new URLSearchParams(searchParams.toString())
+  const budgetNum = parseInt(b)
+  if (!isNaN(budgetNum) && budgetNum > 0) params.set('budget', String(budgetNum))
+  else params.delete('budget')
+  params.set('housing_type', ht)
+  params.set('bedrooms', bd)
+  params.set('lifestyle', ls)
+  const citizenships = [...new Set(tr.map(t => t.citizenship))]
+  params.set('citizenships', citizenships.join(','))
+  params.set('adults', String(tr.filter(t => t.type === 'adult').length))
+  const childrenList = tr.filter(t => t.type === 'child')
+  params.set('children', String(childrenList.length))
+  params.set('has_baby', String(childrenList.some(c => c.ageGroup === 'baby')))
+  params.set('kids_in_kindergarten', String(childrenList.filter(c => c.ageGroup === 'toddler').length))
+  params.set('kids_in_school', String(childrenList.filter(c => c.ageGroup === 'school').length))
+  router.replace(`/?${params.toString()}`)
+}, [budget, housingType, bedrooms, travelers, lifestyle, router, searchParams])
 
   // Desktop handlers
   function addTraveler(type: 'adult' | 'child') {
@@ -214,22 +199,6 @@ export function QuickFilter() {
     const next = travelers.map((t, i) => i === index ? { ...t, citizenship } : t)
     setTravelers(next)
     applyFilter({ travelers: next })
-  }
-
-  function toggleClimate(value: string) {
-    const next = climateSelected.includes(value)
-      ? climateSelected.filter(v => v !== value)
-      : [...climateSelected, value]
-    setClimateSelected(next)
-    applyFilter({ climateSelected: next })
-  }
-
-  function toggleCondition(value: string) {
-    const next = conditionsSelected.includes(value)
-      ? conditionsSelected.filter(v => v !== value)
-      : [...conditionsSelected, value]
-    setConditionsSelected(next)
-    applyFilter({ conditionsSelected: next })
   }
 
   function handleHousingType(type: string) {
@@ -293,8 +262,6 @@ export function QuickFilter() {
     setBudget('')
     setHousingType('apartment')
     setBedrooms('0')
-    setClimateSelected([])
-    setConditionsSelected([])
     setTravelers([{ type: 'adult', citizenship: 'RU' }])
     setLifestyle('comfort')
     router.replace('/')
@@ -555,54 +522,6 @@ export function QuickFilter() {
               </button>
             </div>
           </div>
-
-            {/* Климат */}
-            <div className="flex flex-col gap-1" ref={climateRef}>
-              <span className="text-xs text-steel opacity-0 pointer-events-none">-</span>
-              <div className="relative">
-                <button onClick={() => setClimateOpen(p => !p)} className={climateSelected.length > 0 ? pillActive : pillDefault}>
-                  <Leaf size={14} className={climateSelected.length > 0 ? 'text-brand' : 'text-steel'} />
-                  Климат и природа
-                  {climateSelected.length > 0 && <span className="bg-brand text-white text-xs px-1.5 py-0.5 rounded-full leading-none">{climateSelected.length}</span>}
-                  <ChevronDown size={13} className={`text-steel transition-transform ${climateOpen ? 'rotate-180' : ''}`} />
-                </button>
-                {climateOpen && (
-                  <div className="absolute top-full left-0 mt-2 bg-white border border-border rounded-xl shadow-lg p-3 z-50 min-w-[220px]">
-                    <div className="flex flex-wrap gap-2">
-                      {CLIMATE_OPTIONS.map(opt => (
-                        <button key={opt.value} onClick={() => toggleClimate(opt.value)} className={`px-3 h-8 rounded-full text-sm border transition-all ${climateSelected.includes(opt.value) ? 'bg-brand border-brand text-white' : 'border-border text-ink hover:border-brand hover:text-brand'}`}>
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Легализация */}
-            <div className="flex flex-col gap-1" ref={conditionsRef}>
-              <span className="text-xs text-steel opacity-0 pointer-events-none">-</span>
-              <div className="relative">
-                <button onClick={() => setConditionsOpen(p => !p)} className={conditionsSelected.length > 0 ? pillActive : pillDefault}>
-                  <Stamp size={14} className={conditionsSelected.length > 0 ? 'text-brand' : 'text-steel'} />
-                  Легализация
-                  {conditionsSelected.length > 0 && <span className="bg-brand text-white text-xs px-1.5 py-0.5 rounded-full leading-none">{conditionsSelected.length}</span>}
-                  <ChevronDown size={13} className={`text-steel transition-transform ${conditionsOpen ? 'rotate-180' : ''}`} />
-                </button>
-                {conditionsOpen && (
-                  <div className="absolute top-full left-0 mt-2 bg-white border border-border rounded-xl shadow-lg p-3 z-50 min-w-[240px]">
-                    <div className="flex flex-wrap gap-2">
-                      {CONDITIONS_OPTIONS.map(opt => (
-                        <button key={opt.value} onClick={() => toggleCondition(opt.value)} className={`px-3 h-8 rounded-full text-sm border transition-all ${conditionsSelected.includes(opt.value) ? 'bg-brand border-brand text-white' : 'border-border text-ink hover:border-brand hover:text-brand'}`}>
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
 
             {/* Сброс */}
             <div className="flex flex-col gap-1 ml-auto">
