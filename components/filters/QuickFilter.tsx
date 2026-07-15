@@ -3,7 +3,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSearchParams } from 'next/navigation'
-import { Users, Home, Leaf, Stamp, ChevronDown, Plus, Minus, RotateCcw, X, Smile, Wallet } from 'lucide-react'
+import { Users, Home, Leaf, Stamp, ChevronDown, Plus, Minus, RotateCcw, X, Smile, Wallet, Pencil, Trash2 } from 'lucide-react'
+import { type LifeStyle, type LifestyleOverrides, resolveOverrides } from '@/lib/calc/formulas'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { CounterField, ServiceModeField, CheckboxField, LifestyleLevelField, HousingLevelField } from '@/components/filters/CustomLifestyleFields'
+import { useLifestyleStore } from '@/lib/store/lifestyleStore'
 
 type AgeGroup = 'baby' | 'toddler' | 'school'
 
@@ -57,7 +61,7 @@ const BEDROOM_OPTIONS_HOUSE = [
   { value: '3', label: '3+' },
 ]
 
-const LIFESTYLE_OPTIONS = [
+const LIFESTYLE_OPTIONS: { value: LifeStyle; label: string }[] = [
   { value: 'economy', label: 'Эконом' },
   { value: 'comfort', label: 'Базовый' },
   { value: 'comfort_plus', label: 'Комфорт+' },
@@ -74,7 +78,20 @@ export function QuickFilter() {
     searchParams.get('climate')?.split(',').filter(Boolean) ?? []
   )
   const [conditionsSelected, setConditionsSelected] = useState<string[]>([])
-  const [lifestyle, setLifestyle] = useState(searchParams.get('lifestyle') ?? 'comfort')
+  const [lifestyle, setLifestyle] = useState<LifeStyle>((searchParams.get('lifestyle') as LifeStyle) ?? 'comfort')
+  // Кастомный стиль стейт
+  const [customModalOpen, setCustomModalOpen] = useState(false)
+  const [draftOverrides, setDraftOverrides] = useState<LifestyleOverrides>({})   // ← эта строка пропала
+  const [editingCustomId, setEditingCustomId] = useState<string | null>(null)
+  const [namingStep, setNamingStep] = useState(false)
+  const [nameInput, setNameInput] = useState('')
+  
+  const customLifestyles = useLifestyleStore(s => s.customLifestyles)
+  const selectedCustomId = useLifestyleStore(s => s.selectedCustomId)
+  const addOrUpdateCustomLifestyle = useLifestyleStore(s => s.addOrUpdateCustomLifestyle)
+  const removeCustomLifestyle = useLifestyleStore(s => s.removeCustomLifestyle)
+  const selectCustom = useLifestyleStore(s => s.selectCustom)
+
   const [travelers, setTravelers] = useState<Traveler[]>(() => {
     const adults = parseInt(searchParams.get('adults') ?? '1')
     const children = parseInt(searchParams.get('children') ?? '0')
@@ -138,7 +155,7 @@ export function QuickFilter() {
     bedrooms: string
     climateSelected: string[]
     conditionsSelected: string[]
-    lifestyle?: string
+    lifestyle?: LifeStyle
     travelers: Traveler[]
   }> = {}) => {
     const b = overrides.budget ?? budget
@@ -227,6 +244,51 @@ export function QuickFilter() {
     applyFilter({ bedrooms: value })
   }
 
+  function openCustomLifestyleModal() {
+    setDraftOverrides({})
+    setEditingCustomId(null)
+    setNameInput('')
+    setCustomModalOpen(true)
+  }
+
+  function selectCustomLifestyle(id: string) {
+    selectCustom(id)
+  }
+  
+  function openEditCustomLifestyle(id: string) {
+    const cl = customLifestyles.find(c => c.id === id)
+    if (!cl) return
+    setDraftOverrides(cl.values)
+    setEditingCustomId(id)
+    setNameInput(cl.name)
+    setCustomModalOpen(true)
+  }
+  
+  function requestDeleteCustomLifestyle(id: string) {
+    if (!window.confirm('Удалить этот стиль жизни? Это действие необратимо.')) return
+    removeCustomLifestyle(id)
+  }
+
+  function saveCustomLifestyle(name: string) {
+    const trimmedName = name.trim().slice(0, 16)
+    if (!trimmedName) return
+
+    const newCustom = {
+      id: editingCustomId ?? crypto.randomUUID(),
+      name: trimmedName,
+      values: effective,
+    }
+
+    addOrUpdateCustomLifestyle(newCustom)
+    selectCustom(newCustom.id)
+
+    setCustomModalOpen(false)
+    setNamingStep(false)
+    setNameInput('')
+    setDraftOverrides({})
+    setEditingCustomId(null)
+  }
+
   function handleReset() {
     setBudget('')
     setHousingType('apartment')
@@ -300,7 +362,10 @@ export function QuickFilter() {
     const bed = opts.find(b => b.value === bedrooms)?.label ?? ''
     return `${type} · ${bed}`
   }
-
+  const adultsCount = travelers.filter(t => t.type === 'adult').length
+  const childrenCount = travelers.filter(t => t.type === 'child').length
+  const hasChildren = childrenCount > 0
+  const effective = resolveOverrides(lifestyle, adultsCount, childrenCount, draftOverrides)
   const pillBase = 'flex items-center gap-1.5 px-3 h-9 rounded-full text-sm border transition-all cursor-pointer select-none whitespace-nowrap bg-white'
   const pillFilled = `${pillBase} border-brand text-ink hover:bg-porcelain`
   const pillDefault = `${pillBase} border-border text-ink hover:border-brand hover:text-brand`
@@ -404,17 +469,50 @@ export function QuickFilter() {
               </div>
             </div>
 
-            {/* Стиль жизни */}
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-steel">Стиль жизни:</span>
+          {/* Стиль жизни */}
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-steel">Стиль жизни:</span>
+            <div className="flex items-center gap-2">
               <div className="flex gap-1 p-1 border border-brand rounded-full">
-                {LIFESTYLE_OPTIONS.map(opt => (
-                  <button key={opt.value} onClick={() => { setLifestyle(opt.value); applyFilter({ lifestyle: opt.value }) }} className={`px-3 h-7 rounded-full text-sm transition-all whitespace-nowrap ${lifestyle === opt.value ? 'bg-brand hover:bg-positive text-white font-medium' : 'text-steel hover:text-ink'}`}>
-                    {opt.label}
-                  </button>
+                  {LIFESTYLE_OPTIONS.map(opt => (
+                    <button key={opt.value} onClick={() => { setLifestyle(opt.value); selectCustom(null); applyFilter({ lifestyle: opt.value }) }} className={`px-3 h-7 rounded-full cursor-pointer text-sm transition-all whitespace-nowrap ${!selectedCustomId && lifestyle === opt.value ? 'bg-brand hover:bg-positive text-white font-medium' : 'text-steel hover:text-ink'}`}>
+                      {opt.label}
+                    </button>
+                  ))}
+                 {customLifestyles.map(cl => (
+                  <div key={cl.id} className="relative group">
+                    <button
+                      onClick={() => selectCustomLifestyle(cl.id)}
+                      className={`px-3 h-7 rounded-full cursor-pointer text-sm transition-all whitespace-nowrap ${selectedCustomId === cl.id ? 'bg-brand text-white hover:bg-positive font-medium' : 'hover:text-ink'}`}
+                    >
+                      {cl.name}
+                    </button>
+                    <div className="absolute -top-1.5 -right-1.5 hidden group-hover:flex gap-0.5 z-10">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); openEditCustomLifestyle(cl.id) }}
+                        className="w-4 h-4 flex items-center justify-center rounded-full bg-white border border-border text-steel hover:text-brand hover:border-brand transition-colors"
+                      >
+                        <Pencil size={9} />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); requestDeleteCustomLifestyle(cl.id) }}
+                        className="w-4 h-4 flex items-center justify-center rounded-full bg-white border border-border text-steel hover:text-warning hover:border-warning transition-colors"
+                      >
+                        <Trash2 size={9} />
+                      </button>
+                    </div>
+                  </div>
                 ))}
               </div>
+              <button
+                onClick={openCustomLifestyleModal}
+                className="flex items-center gap-1 px-3 h-9 hover:bg-porcelain cursor-pointer rounded-full text-sm border border-dashed border-brand text-brand hover:border-brand hover:text-brand transition-all whitespace-nowrap"
+              >
+                <Plus size={13} />
+                Свой стиль <sup className="text-[10px]">beta</sup>
+              </button>
             </div>
+          </div>
 
             <div className="h-9 w-px bg-border self-end shrink-0" />
 
@@ -422,12 +520,16 @@ export function QuickFilter() {
           <div className="flex flex-col gap-1">
             <span className="text-xs text-steel">Ежемесячный бюджет:</span>
             <div className={`${pillFilled} gap-1.5`}>
-              <button
-                onClick={() => setBudget(v => String(Math.max(0, (parseInt(v) || 0) - 50)))}
-                className="text-steel hover:text-brand transition-colors"
-              >
-                <Minus size={14} />
-              </button>
+            <button
+              onClick={() => {
+                const newVal = String(Math.max(0, (parseInt(budget) || 0) - 50))
+                setBudget(newVal)
+                applyFilter({ budget: newVal })
+              }}
+              className="text-steel hover:text-brand transition-colors"
+            >
+              <Minus size={14} />
+            </button>
               <span className="text-steel text-sm shrink-0">до</span>
               <input
                 type="text"
@@ -436,12 +538,17 @@ export function QuickFilter() {
                   const val = e.target.value.replace(/[^0-9]/g, '')
                   setBudget(val)
                 }}
+                onBlur={() => applyFilter({ budget })}
                 className="w-16 text-sm font-medium text-ink outline-none text-center bg-transparent"
                 placeholder="1000"
               />
               <span className="text-steel text-sm shrink-0">$/мес</span>
               <button
-                onClick={() => setBudget(v => String(Math.min(20000, (parseInt(v) || 0) + 50)))}
+                onClick={() => {
+                  const newVal = String(Math.min(20000, (parseInt(budget) || 0) + 50))
+                  setBudget(newVal)
+                  applyFilter({ budget: newVal })
+                }}
                 className="text-steel hover:text-brand transition-colors"
               >
                 <Plus size={14} />
@@ -647,23 +754,55 @@ export function QuickFilter() {
           </div>
 
           {/* Стиль жизни */}
-          <div className="flex items-center justify-between  bg-white ">
-            <div className="flex px-4 items-center gap-2"> 
+          <div className="flex items-center justify-between bg-white">
+            <div className="flex px-4 items-center gap-2">
               <Smile size={14} className="text-brand shrink-0" />
               <span className="text-sm text-steel shrink-0">Стиль жизни</span>
             </div>
             <div className="flex gap-1 p-1.5 border border-brand rounded-2xl">
-              {LIFESTYLE_OPTIONS.map(opt => (
+            {LIFESTYLE_OPTIONS.map(opt => (
                 <button
                   key={opt.value}
-                  onClick={() => setMobileLifestyle(opt.value)}
-                  className={`px-3 h-9 rounded-full text-sm transition-all whitespace-nowrap ${mobileLifestyle === opt.value ? 'bg-brand text-white font-medium' : ' hover:text-ink'}`}
+                  onClick={() => { setMobileLifestyle(opt.value); selectCustom(null) }}
+                  className={`px-3 h-9 rounded-full text-sm cursor-pointer transition-all whitespace-nowrap ${!selectedCustomId && mobileLifestyle === opt.value ? 'bg-brand text-white font-medium' : ' hover:text-ink'}`}
                 >
                   {opt.label}
                 </button>
               ))}
+              {customLifestyles.map(cl => (
+                <div key={cl.id} className="relative group">
+                  <button
+                    onClick={() => selectCustomLifestyle(cl.id)}
+                    className={`px-3 h-7 rounded-full cursor-pointer text-sm transition-all whitespace-nowrap ${selectedCustomId === cl.id ? 'bg-brand text-white hover:bg-positive font-medium' : ' hover:text-ink'}`}
+                  >
+                    {cl.name}
+                  </button>
+                  <div className="absolute -top-1.5 -right-1.5 hidden group-hover:flex gap-0.5 z-10">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openEditCustomLifestyle(cl.id) }}
+                      className="w-4 h-4 flex items-center justify-center rounded-full bg-white border border-border text-steel hover:text-brand hover:border-brand transition-colors"
+                    >
+                      <Pencil size={9} />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); requestDeleteCustomLifestyle(cl.id) }}
+                      className="w-4 h-4 flex items-center justify-center rounded-full bg-white border border-border text-steel hover:text-warning hover:border-warning transition-colors"
+                    >
+                      <Trash2 size={9} />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
+          <button
+            onClick={openCustomLifestyleModal}
+            className="flex items-center justify-center gap-1 h-11 cursor-pointer rounded-2xl text-sm border border-dashed border-brand text-brand hover:bg-porcelain transition-all"
+          >
+            <Plus size={14} />
+            Задай свой стиль <sup className="text-[10px]">beta</sup>
+          </button>
+
           {/* Бюджет */}
           <div className="flex items-center justify-between px-4 py-3.5 bg-white border border-border rounded-2xl">
             <div className="flex items-center gap-2">
@@ -741,7 +880,193 @@ export function QuickFilter() {
           </div>
         </div>
       )}
+{/* Модал "Задать свой стиль жизни" */}
+  <Dialog open={customModalOpen} onOpenChange={setCustomModalOpen}>
+    <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto ">
+      <DialogHeader>
+        <DialogTitle>Задать свой стиль жизни</DialogTitle>
+      </DialogHeader>
+      <div className="relative">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 
-    </div>
+          <HousingLevelField
+            label="Уровень жилья"
+            description="Влияет на аренду и коммуналку"
+            value={effective.housingLevel}
+            onChange={(next) => setDraftOverrides(prev => ({ ...prev, housingLevel: next }))}
+          />
+
+          <LifestyleLevelField
+            label="Продуктовая корзина"
+            value={effective.groceriesLevel}
+            onChange={(next) => setDraftOverrides(prev => ({ ...prev, groceriesLevel: next }))}
+          />
+
+          <CheckboxField
+            label="Домашний интернет"
+            checked={effective.hasHomeInternet}
+            onChange={(next) => setDraftOverrides(prev => ({ ...prev, hasHomeInternet: next }))}
+          />
+
+          <CounterField
+            label="Мобильная связь"
+            description="Тарифов на семью"
+            value={effective.mobilePlansCount}
+            onChange={(next) => setDraftOverrides(prev => ({ ...prev, mobilePlansCount: next }))}
+          />
+
+          <CounterField
+            label="Проездной (транспорт)"
+            description="Количество проездных билетов"
+            value={effective.transportPassesCount}
+            onChange={(next) => setDraftOverrides(prev => ({ ...prev, transportPassesCount: next }))}
+          />
+
+          <CounterField
+            label="Разовые поездки"
+            description="Поездок в месяц без проездного"
+            value={effective.transportSingleTicketsCount}
+            onChange={(next) => setDraftOverrides(prev => ({ ...prev, transportSingleTicketsCount: next }))}
+          />
+
+          <CounterField
+            label="Такси"
+            description="Поездок в месяц на всю семью"
+            value={effective.taxiRidesPerMonth}
+            onChange={(next) => setDraftOverrides(prev => ({ ...prev, taxiRidesPerMonth: next }))}
+          />
+
+          <CounterField
+            label="Кафе и доставка"
+            description="Визитов в месяц на всю семью"
+            value={effective.cafeVisitsPerMonth}
+            onChange={(next) => setDraftOverrides(prev => ({ ...prev, cafeVisitsPerMonth: next }))}
+          />
+
+          <CounterField
+            label="Бьюти-услуги"
+            description="Процедур в месяц"
+            value={effective.beautyProceduresPerMonth}
+            onChange={(next) => setDraftOverrides(prev => ({ ...prev, beautyProceduresPerMonth: next }))}
+          />
+
+          <CounterField
+            label="Фитнес"
+            description="Абонементов на семью"
+            value={effective.fitnessMembershipsCount}
+            onChange={(next) => setDraftOverrides(prev => ({ ...prev, fitnessMembershipsCount: next }))}
+          />
+
+          <CounterField
+            label="Коворкинг"
+            description="Мест в месяц"
+            value={effective.coworkingSeatsCount}
+            onChange={(next) => setDraftOverrides(prev => ({ ...prev, coworkingSeatsCount: next }))}
+          />
+
+
+        {hasChildren && (
+          <>
+              <CounterField
+                label="Кружки и секции"
+                description="Количество на всех детей"
+                value={effective.clubsCount}
+                onChange={(next) => setDraftOverrides(prev => ({ ...prev, clubsCount: next }))}
+              />
+
+            <ServiceModeField
+              label="Детский сад"
+              value={effective.kindergartenMode}
+              onChange={(next) => setDraftOverrides(prev => ({ ...prev, kindergartenMode: next }))}
+            />
+
+            <ServiceModeField
+              label="Школа"
+              value={effective.schoolMode}
+              onChange={(next) => setDraftOverrides(prev => ({ ...prev, schoolMode: next }))}
+            />
+          </>
+        )}
+
+        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+          <ServiceModeField
+            label="Медицинская страховка"
+            value={effective.insuranceMode}
+            onChange={(next) => setDraftOverrides(prev => ({ ...prev, insuranceMode: next }))}
+          />
+
+          {effective.insuranceMode !== 'none' && (
+            <CounterField
+              label="Количество страховых полисов"
+              description="На всех членов семьи"
+              value={effective.insuranceCount}
+              onChange={(next) => setDraftOverrides(prev => ({ ...prev, insuranceCount: next }))}
+            />
+          )}
+        </div>
+
+        </div>
+        {editingCustomId ? (
+          <button
+            onClick={() => saveCustomLifestyle(nameInput)}
+            className="w-full h-11 mt-4 rounded-xl bg-brand hover:bg-positive text-white text-sm font-medium transition-colors"
+          >
+            Сохранить изменения
+          </button>
+        ) : (
+          <button
+            onClick={() => setNamingStep(true)}
+            className="w-full h-11 mt-4 rounded-xl bg-brand hover:bg-positive text-white text-sm font-medium transition-colors"
+          >
+            Создать стиль
+          </button>
+        )}
+        {namingStep && (
+          <div
+            className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center rounded-lg"
+            onClick={() => setNamingStep(false)}
+          >
+            <div
+              className="bg-white border border-border rounded-2xl shadow-lg p-5 w-[320px]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-ink">Введите своё название стиля</p>
+                <button onClick={() => setNamingStep(false)} className="text-steel hover:text-ink transition-colors">
+                  <X size={18} />
+                </button>
+              </div>
+              <input
+                type="text"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                maxLength={16}
+                placeholder="Например: Мой стиль"
+                className="w-full h-10 px-3 rounded-lg border border-border text-sm text-ink outline-none focus:border-brand mb-4"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setNamingStep(false)}
+                  className="flex-1 h-10 rounded-lg border border-border text-sm text-steel hover:border-warning hover:text-warning transition-colors"
+                >
+                  Отменить
+                </button>
+                <button
+                  onClick={() => saveCustomLifestyle(nameInput)}
+                  disabled={!nameInput.trim()}
+                  className="flex-1 h-10 rounded-lg bg-brand hover:bg-positive text-white text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Готово
+                </button>
+              </div>
+            </div>
+          </div>
+        )}  
+      </div>
+    </DialogContent>
+  </Dialog>
+</div>
+
   )
 }

@@ -1,8 +1,12 @@
+'use client'
+
 import Link from 'next/link'
+import { useState, useEffect } from 'react'
 import { Clock, Shield, Waves, Mountain, Sun, Snowflake, Stamp, Globe } from 'lucide-react'
 import Image from 'next/image'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
-import { calcTotal, type LifeStyle } from '@/lib/calc/formulas'
+import { getBudgetStatus, type BudgetStatus } from '@/lib/calc/budgetStatus'
+import type { CityCalcResult } from '@/lib/calc/getCityCalcResult'
 
 type I18n = { ru: string; en: string }
 
@@ -23,9 +27,6 @@ type City = {
   temp_winter_max: number | null
   countries: {
     name_i18n: unknown
-    healthcare_access: string | null
-    school_is_free: boolean | null
-    kindergarten_is_free: boolean | null
     country_politics: {
       fh_score: number | null
       eiu_regime_type_id: number | null
@@ -43,43 +44,12 @@ type City = {
       languages: { name_i18n: unknown; code: string } | null
     }[] | null
   } | null
-  costs: {
-    groceries_usd: number | null
-    cafes_usd: number | null
-    internet_home_usd: number | null
-    mobile_plan_usd: number | null
-    transport_monthly_pass_usd: number | null
-    transport_single_ticket_usd: number | null
-    taxi_ride_avg_usd: number | null
-    beauty_base_index_usd: number | null
-    fitness_usd: number | null
-    coworking_usd: number | null
-    insurance_private_usd: number | null
-    kindergarten_usd: number | null
-    school_usd: number | null
-    kids_club_activity_usd: number | null
-    baby_supplies_usd: number | null
-  }[]
-  rent_options: {
-    accommodation_type: string | null
-    bedrooms_count: number | null
-    price_usd_min: number | null
-    price_usd_max: number | null
-    utilities_usd_min: number | null
-    utilities_usd_max: number | null
-  }[]
 }
 
 type Props = {
   city: City
-  housingType: string
-  bedrooms: number | null
-  adults: number
-  children: number
-  lifestyle: LifeStyle
-  hasBaby: boolean
-  kidsInKindergarten: number
-  kidsInSchool: number
+  result: CityCalcResult | null
+  budget: number | null
 }
 
 function countryFlag(countryId: string | null): string {
@@ -160,13 +130,34 @@ function getCurrentTime(offset: number | null): string {
   return local.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 }
 
-export function CityCard({ city, housingType, bedrooms, adults, children, lifestyle, hasBaby, kidsInKindergarten, kidsInSchool }: Props) {
+// Визуальное оформление подсветки запаса бюджета.
+// 'insufficient' сюда не попадает — такие города уже отфильтрованы в CityGrid.
+function budgetStatusStyle(status: BudgetStatus | null): { box: string; label: string | null } {
+  switch (status) {
+    case 'tight':
+      return { box: 'bg-warning text-white', label: 'Впритык' }
+    case 'comfortable':
+      return { box: 'bg-medium text-white', label: 'Комфортно' }
+    case 'exceeds':
+      return { box: 'bg-positive text-white', label: 'С запасом' }
+    default:
+      return { box: 'bg-porcelain text-steel', label: null }
+  }
+}
+
+export function CityCard({ city, result, budget }: Props) {
   const name = (city.name_i18n as I18n)?.ru ?? 'Без названия'
   const countryName = (city.countries?.name_i18n as I18n)?.ru ?? ''
   const flag = countryFlag(city.country_id)
   const tz = city.timezone_offset
   const tzLabel = tz != null ? `GMT${tz >= 0 ? '+' : ''}${tz}` : '—'
-  const currentTime = getCurrentTime(tz)
+  const [currentTime, setCurrentTime] = useState('—')
+
+  useEffect(() => {
+    setCurrentTime(getCurrentTime(tz))
+    const interval = setInterval(() => setCurrentTime(getCurrentTime(tz)), 60000)
+    return () => clearInterval(interval)
+  }, [tz])
   const sea = seaLabel(city.sea_type)
   const english = englishBadge(city.english_level)
   const politics = city.countries?.country_politics
@@ -178,46 +169,13 @@ export function CityCard({ city, housingType, bedrooms, adults, children, lifest
   const shownLangs = officialLangs.slice(0, 2)
   const extraLangs = officialLangs.length - 2
 
-  const costs = city.costs?.[0]
-  const rentEntry = bedrooms !== null
-    ? city.rent_options?.find(r => r.accommodation_type === housingType && r.bedrooms_count === bedrooms)
-    : (city.rent_options?.find(r => r.accommodation_type === housingType && r.bedrooms_count === 0) ??
-       city.rent_options?.find(r => r.accommodation_type === housingType && r.bedrooms_count === 1))
-
-  const result = costs && rentEntry ? calcTotal({
-    adults,
-    children,
-    has_baby: hasBaby,
-    kids_in_kindergarten: kidsInKindergarten,
-    kids_in_school: kidsInSchool,
-    lifestyle,
-    price_usd_min: rentEntry.price_usd_min ?? 0,
-    price_usd_max: rentEntry.price_usd_max ?? 0,
-    utilities_usd_min: rentEntry.utilities_usd_min ?? 0,
-    groceries_usd: costs.groceries_usd ?? 0,
-    internet_home_usd: costs.internet_home_usd ?? 0,
-    mobile_plan_usd: costs.mobile_plan_usd ?? 0,
-    transport_monthly_pass_usd: costs.transport_monthly_pass_usd ?? 0,
-    transport_single_ticket_usd: costs.transport_single_ticket_usd ?? 0,
-    taxi_ride_avg_usd: costs.taxi_ride_avg_usd ?? 0,
-    cafes_usd: costs.cafes_usd ?? 0,
-    beauty_base_index_usd: costs.beauty_base_index_usd ?? 0,
-    fitness_usd: costs.fitness_usd ?? 0,
-    coworking_usd: costs.coworking_usd ?? 0,
-    insurance_private_usd: costs.insurance_private_usd ?? 0,
-    kindergarten_usd: costs.kindergarten_usd ?? 0,
-    school_usd: costs.school_usd ?? 0,
-    kids_club_activity_usd: costs.kids_club_activity_usd ?? 0,
-    baby_supplies_usd: costs.baby_supplies_usd ?? 0,
-    healthcare_access: (city.countries?.healthcare_access ?? 'paid') as 'free' | 'emergency_only' | 'paid',
-    kindergarten_is_free: city.countries?.kindergarten_is_free ?? false,
-    school_is_free: city.countries?.school_is_free ?? false,
-  }) : null
-
   const lifeCost = result ? result.total - result.rent : null
-  const minRent = rentEntry?.price_usd_min ?? null
-  const maxRent = rentEntry?.price_usd_max ?? null
-  const totalMin = lifeCost && minRent ? lifeCost + minRent : null
+  const totalMin = result ? result.total : null
+
+  // Подсветка считается от полной стоимости (result.total), а не только "жизни без аренды" —
+  // бюджет должен покрывать всё целиком.
+  const budgetStatus = budget !== null && result ? getBudgetStatus(budget, result.total) : null
+  const statusStyle = budgetStatusStyle(budgetStatus)
 
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
@@ -257,12 +215,19 @@ export function CityCard({ city, housingType, bedrooms, adults, children, lifest
         {/* Бюджет */}
         {totalMin && (
           <div>
-            <p className="text-xl font-semibold text-ink">
-              Бюджет: от ${totalMin} / месяц
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-xl font-semibold text-ink">
+                Бюджет: от ${totalMin} / месяц
+              </p>
+              {statusStyle.label && (
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusStyle.box} text-ink`}>
+                  {statusStyle.label}
+                </span>
+              )}
+            </div>
             <div className="flex gap-3 text-sm mt-1.5">
               {lifeCost && (
-                <div className="bg-porcelain rounded-lg px-3 py-2 flex-1">
+                <div className={`rounded-lg px-3 py-2 flex-1 bg-porcelain`}>
                   <span className="text-xs text-steel mb-0.5 flex items-center gap-1">
                     Стоимость жизни
                     <InfoTooltip text="Продукты, интернет, транспорт, кафе и другие расходы по выбранному стилю жизни" />
@@ -270,8 +235,8 @@ export function CityCard({ city, housingType, bedrooms, adults, children, lifest
                   <span className="font-semibold text-ink">от ${lifeCost}</span>
                 </div>
               )}
-              {minRent && (
-                <div className="bg-porcelain rounded-lg px-3 py-2 flex-1">
+              {result && (
+                <div className={`rounded-lg px-3 py-2 flex-1 bg-porcelain`}>
                   <span className="text-xs text-steel mb-0.5 flex items-center gap-1">
                     Стоимость аренды
                     <InfoTooltip text="Выберите тип жилья в фильтре для более точного расчета" />
