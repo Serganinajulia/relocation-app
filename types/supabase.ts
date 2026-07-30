@@ -25,15 +25,20 @@ export type Database = {
           created_at: string | null
           crime_index: number | null
           ecology_desc_i18n: Json | null
+          education_quality_index: number | null
           english_level: string | null
           general_desc_i18n: Json | null
+          happiness_index: number | null
           has_mountains: boolean | null
+          healthcare_quality_index: number | null
           id: string
+          image_url: string | null
           infrastructure_data: Json | null
           kids_desc_i18n: Json | null
           medicine_desc_i18n: Json | null
           name_i18n: Json
           pets_desc_i18n: Json | null
+          pollution_index: number | null
           population: number | null
           safety_data: Json | null
           safety_index: number | null
@@ -58,15 +63,20 @@ export type Database = {
           created_at?: string | null
           crime_index?: number | null
           ecology_desc_i18n?: Json | null
+          education_quality_index?: number | null
           english_level?: string | null
           general_desc_i18n?: Json | null
+          happiness_index?: number | null
           has_mountains?: boolean | null
+          healthcare_quality_index?: number | null
           id?: string
+          image_url?: string | null
           infrastructure_data?: Json | null
           kids_desc_i18n?: Json | null
           medicine_desc_i18n?: Json | null
           name_i18n: Json
           pets_desc_i18n?: Json | null
+          pollution_index?: number | null
           population?: number | null
           safety_data?: Json | null
           safety_index?: number | null
@@ -91,15 +101,20 @@ export type Database = {
           created_at?: string | null
           crime_index?: number | null
           ecology_desc_i18n?: Json | null
+          education_quality_index?: number | null
           english_level?: string | null
           general_desc_i18n?: Json | null
+          happiness_index?: number | null
           has_mountains?: boolean | null
+          healthcare_quality_index?: number | null
           id?: string
+          image_url?: string | null
           infrastructure_data?: Json | null
           kids_desc_i18n?: Json | null
           medicine_desc_i18n?: Json | null
           name_i18n?: Json
           pets_desc_i18n?: Json | null
+          pollution_index?: number | null
           population?: number | null
           safety_data?: Json | null
           safety_index?: number | null
@@ -134,16 +149,19 @@ export type Database = {
       climate_types: {
         Row: {
           code: string
+          description_i18n: Json | null
           id: number
           name_i18n: Json
         }
         Insert: {
           code: string
+          description_i18n?: Json | null
           id?: number
           name_i18n: Json
         }
         Update: {
           code?: string
+          description_i18n?: Json | null
           id?: number
           name_i18n?: Json
         }
@@ -152,6 +170,7 @@ export type Database = {
       costs: {
         Row: {
           baby_supplies_usd: number | null
+          beauty_base_index_usd: number | null
           cafes_usd: number | null
           city_id: string | null
           coworking_usd: number | null
@@ -160,18 +179,23 @@ export type Database = {
           fitness_usd: number | null
           groceries_usd: number | null
           id: string
+          insurance_private_usd: number | null
           internet_home_usd: number | null
+          kids_club_activity_usd: number | null
           kindergarten_usd: number | null
           last_verified_at: string | null
+          mobile_plan_usd: number | null
           period_month: string | null
           school_usd: number | null
           summary_i18n: Json | null
-          transport_basic_usd: number | null
+          taxi_ride_avg_usd: number | null
+          transport_monthly_pass_usd: number | null
+          transport_single_ticket_usd: number | null
           updated_at: string | null
-          utilities_usd: number | null
         }
         Insert: {
           baby_supplies_usd?: number | null
+          beauty_base_index_usd?: number | null
           cafes_usd?: number | null
           city_id?: string | null
           coworking_usd?: number | null
@@ -180,18 +204,23 @@ export type Database = {
           fitness_usd?: number | null
           groceries_usd?: number | null
           id?: string
+          insurance_private_usd?: number | null
           internet_home_usd?: number | null
+          kids_club_activity_usd?: number | null
           kindergarten_usd?: number | null
           last_verified_at?: string | null
+          mobile_plan_usd?: number | null
           period_month?: string | null
           school_usd?: number | null
           summary_i18n?: Json | null
-          transport_basic_usd?: number | null
+          taxi_ride_avg_usd?: number | null
+          transport_monthly_pass_usd?: number | null
+          transport_single_ticket_usd?: number | null
           updated_at?: string | null
-          utilities_usd?: number | null
         }
         Update: {
           baby_supplies_usd?: number | null
+          beauty_base_index_usd?: number | null
           cafes_usd?: number | null
           city_id?: string | null
           coworking_usd?: number | null
@@ -200,15 +229,19 @@ export type Database = {
           fitness_usd?: number | null
           groceries_usd?: number | null
           id?: string
+          insurance_private_usd?: number | null
           internet_home_usd?: number | null
+          kids_club_activity_usd?: number | null
           kindergarten_usd?: number | null
           last_verified_at?: string | null
+          mobile_plan_usd?: number | null
           period_month?: string | null
           school_usd?: number | null
           summary_i18n?: Json | null
-          transport_basic_usd?: number | null
+          taxi_ride_avg_usd?: number | null
+          transport_monthly_pass_usd?: number | null
+          transport_single_ticket_usd?: number | null
           updated_at?: string | null
-          utilities_usd?: number | null
         }
         Relationships: [
           {
@@ -224,50 +257,91 @@ export type Database = {
         Row: {
           citizenship_path_i18n: Json | null
           citizenship_years: number | null
+          cluster_id: number | null
           created_at: string | null
           currency: string | null
+          healthcare_access: string | null
           id: string
+          kindergarten_is_free: boolean | null
           language_info_i18n: Json | null
           local_income_tax_desc_i18n: Json | null
           name_i18n: Json
           passport_strength: number | null
+          remote_income_tax_grace_months: number | null
           remote_income_tax_note_i18n: Json | null
           remote_income_tax_type: string | null
           residency_tax_desc_i18n: Json | null
+          school_is_free: boolean | null
           updated_at: string | null
           usd_rate: number | null
         }
         Insert: {
           citizenship_path_i18n?: Json | null
           citizenship_years?: number | null
+          cluster_id?: number | null
           created_at?: string | null
           currency?: string | null
+          healthcare_access?: string | null
           id: string
+          kindergarten_is_free?: boolean | null
           language_info_i18n?: Json | null
           local_income_tax_desc_i18n?: Json | null
           name_i18n: Json
           passport_strength?: number | null
+          remote_income_tax_grace_months?: number | null
           remote_income_tax_note_i18n?: Json | null
           remote_income_tax_type?: string | null
           residency_tax_desc_i18n?: Json | null
+          school_is_free?: boolean | null
           updated_at?: string | null
           usd_rate?: number | null
         }
         Update: {
           citizenship_path_i18n?: Json | null
           citizenship_years?: number | null
+          cluster_id?: number | null
           created_at?: string | null
           currency?: string | null
+          healthcare_access?: string | null
           id?: string
+          kindergarten_is_free?: boolean | null
           language_info_i18n?: Json | null
           local_income_tax_desc_i18n?: Json | null
           name_i18n?: Json
           passport_strength?: number | null
+          remote_income_tax_grace_months?: number | null
           remote_income_tax_note_i18n?: Json | null
           remote_income_tax_type?: string | null
           residency_tax_desc_i18n?: Json | null
+          school_is_free?: boolean | null
           updated_at?: string | null
           usd_rate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "countries_cluster_id_fkey"
+            columns: ["cluster_id"]
+            isOneToOne: false
+            referencedRelation: "country_clusters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      country_clusters: {
+        Row: {
+          code: string
+          id: number
+          name_i18n: Json
+        }
+        Insert: {
+          code: string
+          id?: number
+          name_i18n: Json
+        }
+        Update: {
+          code?: string
+          id?: number
+          name_i18n?: Json
         }
         Relationships: []
       }
@@ -354,17 +428,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_politics_eiu"
-            columns: ["eiu_regime_type_id"]
-            isOneToOne: false
-            referencedRelation: "eiu_regime_types"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_politics_fh"
-            columns: ["fh_status_id"]
-            isOneToOne: false
-            referencedRelation: "fh_statuses"
+            foreignKeyName: "fk_country_politics_country"
+            columns: ["country_id"]
+            isOneToOne: true
+            referencedRelation: "countries"
             referencedColumns: ["id"]
           },
         ]
@@ -376,9 +443,12 @@ export type Database = {
           created_at: string | null
           description_i18n: Json | null
           duration_months: number | null
+          income_calc_type: string
           is_path_to_citizenship: boolean | null
           legal_services_usd: number | null
           min_income_usd: number | null
+          min_income_usd_per_adult: number | null
+          min_income_usd_per_child: number | null
           residency_type_id: number
           taxes_desc_i18n: Json | null
           updated_at: string | null
@@ -389,9 +459,12 @@ export type Database = {
           created_at?: string | null
           description_i18n?: Json | null
           duration_months?: number | null
+          income_calc_type?: string
           is_path_to_citizenship?: boolean | null
           legal_services_usd?: number | null
           min_income_usd?: number | null
+          min_income_usd_per_adult?: number | null
+          min_income_usd_per_child?: number | null
           residency_type_id: number
           taxes_desc_i18n?: Json | null
           updated_at?: string | null
@@ -402,9 +475,12 @@ export type Database = {
           created_at?: string | null
           description_i18n?: Json | null
           duration_months?: number | null
+          income_calc_type?: string
           is_path_to_citizenship?: boolean | null
           legal_services_usd?: number | null
           min_income_usd?: number | null
+          min_income_usd_per_adult?: number | null
+          min_income_usd_per_child?: number | null
           residency_type_id?: number
           taxes_desc_i18n?: Json | null
           updated_at?: string | null
@@ -490,6 +566,8 @@ export type Database = {
           price_usd_min: number | null
           rent_features_i18n: Json | null
           updated_at: string | null
+          utilities_usd_max: number | null
+          utilities_usd_min: number | null
         }
         Insert: {
           accommodation_type?: string | null
@@ -503,6 +581,8 @@ export type Database = {
           price_usd_min?: number | null
           rent_features_i18n?: Json | null
           updated_at?: string | null
+          utilities_usd_max?: number | null
+          utilities_usd_min?: number | null
         }
         Update: {
           accommodation_type?: string | null
@@ -516,6 +596,8 @@ export type Database = {
           price_usd_min?: number | null
           rent_features_i18n?: Json | null
           updated_at?: string | null
+          utilities_usd_max?: number | null
+          utilities_usd_min?: number | null
         }
         Relationships: [
           {
@@ -529,14 +611,17 @@ export type Database = {
       }
       residency_types: {
         Row: {
+          code: string | null
           id: number
           name_i18n: Json | null
         }
         Insert: {
+          code?: string | null
           id: number
           name_i18n?: Json | null
         }
         Update: {
+          code?: string | null
           id?: number
           name_i18n?: Json | null
         }

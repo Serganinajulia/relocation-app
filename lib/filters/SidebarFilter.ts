@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { SlidersHorizontal, ChevronLeft, ChevronRight, X, Minus, Plus } from 'lucide-react'
+import { SlidersHorizontal, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { ExtendedFilters, FilterReferenceData, EMPTY_EXTENDED_FILTERS } from '@/lib/filters/types'
 import { parseExtendedFilters, EXTENDED_FILTER_PARAM_KEYS, serializeExtendedFilterValue, isFilterActive } from '@/lib/filters/urlParams'
 import {
@@ -19,51 +19,6 @@ type Props = {
 }
 
 type Pill = { text: string; clear: () => Partial<ExtendedFilters> }
-
-// Дублирует поле "Ежемесячный бюджет" из QuickFilter — тот же URL-параметр 'budget',
-// поэтому оба поля всегда синхронизированы без дополнительной логики.
-function BudgetBlock() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const budget = searchParams.get('budget') ?? ''
-
-  function setBudget(next: string) {
-    const params = new URLSearchParams(searchParams.toString())
-    if (next) params.set('budget', next)
-    else params.delete('budget')
-    router.replace(`/?${params.toString()}`, { scroll: false })
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      <p className="text-sm font-medium text-ink">Бюджет</p>
-      <div className="flex items-center gap-1.5 h-9 px-3 rounded-full border border-brand bg-white">
-        <button
-          onClick={() => setBudget(String(Math.max(0, (parseInt(budget) || 0) - 50)))}
-          className="text-steel hover:text-brand transition-colors"
-        >
-          <Minus size={14} />
-        </button>
-        <span className="text-steel text-sm shrink-0">до</span>
-        <input
-          type="text"
-          value={budget}
-          onChange={e => setBudget(e.target.value.replace(/[^0-9]/g, ''))}
-          className="w-16 text-sm font-medium text-ink outline-none text-center bg-transparent"
-        />
-        <div className="ml-auto flex items-center gap-1.5 shrink-0">
-          <span className="text-steel text-sm">$/мес</span>
-          <button
-            onClick={() => setBudget(String((parseInt(budget) || 0) + 50))}
-            className="text-steel hover:text-brand transition-colors"
-          >
-            <Plus size={14} />
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // Плоский список выбранных значений для зоны "Выбрано" наверху фильтра
 function buildSelectedPills(filters: ExtendedFilters, reference: FilterReferenceData): Pill[] {
@@ -108,8 +63,7 @@ function buildSelectedPills(filters: ExtendedFilters, reference: FilterReference
     const r = reference.residencyTypes.find(r => r.id === id)
     if (r) pills.push({ text: r.label, clear: () => ({ residencyTypeIds: filters.residencyTypeIds.filter(v => v !== id) }) })
   })
-  // incomeFits — чекбокс закомментирован в LegalizationBlock до реализации логики, пилюля тоже не нужна пока
-  // if (filters.incomeFits) pills.push({ text: 'Доход подходит', clear: () => ({ incomeFits: false }) })
+  if (filters.incomeFits) pills.push({ text: 'Доход подходит', clear: () => ({ incomeFits: false }) })
   if (filters.citizenshipYearsMax !== null) pills.push({ text: `Гражданство до ${filters.citizenshipYearsMax} лет`, clear: () => ({ citizenshipYearsMax: null }) })
   if (filters.taxType) {
     const labels: Record<string, string> = { none: 'не облагает', reduced: 'льготный', full: 'полный' }
@@ -138,7 +92,7 @@ export function SidebarFilter({ reference, onCollapsedChange }: Props) {
       if (serialized === null) params.delete(paramKey)
       else params.set(paramKey, serialized)
     })
-    router.replace(`/?${params.toString()}`, { scroll: false })
+    router.replace(`/?${params.toString()}`)
   }
 
   function update<K extends keyof ExtendedFilters>(key: K, value: ExtendedFilters[K]) {
@@ -148,7 +102,7 @@ export function SidebarFilter({ reference, onCollapsedChange }: Props) {
   function resetAll() {
     const params = new URLSearchParams(searchParams.toString())
     Object.values(EXTENDED_FILTER_PARAM_KEYS).forEach(paramKey => params.delete(paramKey))
-    router.replace(`/?${params.toString()}`, { scroll: false })
+    router.replace(`/?${params.toString()}`)
   }
 
   function toggle() {
@@ -202,7 +156,6 @@ export function SidebarFilter({ reference, onCollapsedChange }: Props) {
       )}
 
       <div className="flex flex-col gap-4 [&>*:not(:first-child)]:pt-4 [&>*:not(:first-child)]:border-t [&>*:not(:first-child)]:border-border">
-        <BudgetBlock />
         <CountriesLanguagesBlock filters={filters} update={update} updateMany={applyPartial} reference={reference} />
         <ClimateBlock filters={filters} update={update} updateMany={applyPartial} reference={reference} />
         <PoliticsSafetyBlock filters={filters} update={update} updateMany={applyPartial} reference={reference} />

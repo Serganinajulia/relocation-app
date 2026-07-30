@@ -507,7 +507,7 @@ const applyFilter = useCallback((overrides: Partial<{
                 }}
                 onBlur={() => applyFilter({ budget })}
                 className="w-16 text-sm font-medium text-ink outline-none text-center bg-transparent"
-                placeholder="1000"
+                placeholder="0"
               />
               <span className="text-steel text-sm shrink-0">$/мес</span>
               <button

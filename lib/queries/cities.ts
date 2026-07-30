@@ -35,11 +35,16 @@ export async function getCities(filter: CitiesFilter = {}) {
       temp_summer_max,
       temp_winter_min,
       temp_winter_max,
+      climate_type_id,
+      pollution_index,
+      healthcare_quality_index,
       countries!fk_cities_country (
         name_i18n,
         healthcare_access,
         school_is_free,
         kindergarten_is_free,
+        citizenship_years,
+        remote_income_tax_type,
         tourist_visas!fk_visa_destination (
           origin_country_id,
           visa_type,
@@ -50,16 +55,23 @@ export async function getCities(filter: CitiesFilter = {}) {
           is_official,
           is_widely_spoken,
           languages (
+            id,
             name_i18n,
             code
           )
         ),
         country_politics (
           fh_score,
+          fh_status_id,
           eiu_regime_type_id,
           eiu_regime_types!country_politics_eiu_regime_type_id_fkey (
             name_i18n
           )
+        ),
+        country_residency_options (
+          residency_type_id,
+          min_income_usd_per_adult,
+          min_income_usd_per_child
         )
       ),
       costs (

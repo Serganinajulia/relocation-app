@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Header } from "@/components/shared/Header";
+import { Footer } from "@/components/shared/Footer";
 import { Onest, Raleway } from "next/font/google";
 
 const raleway = Raleway({
@@ -35,6 +36,7 @@ export default function RootLayout({
         <div className="flex-1">
           {children}
         </div>
+        <Footer />
       </body>
     </html>
   );

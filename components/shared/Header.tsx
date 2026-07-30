@@ -1,13 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { MapPin, Search, Send, ChevronDown } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { MapPin, Search, Send, ChevronDown, X } from 'lucide-react'
 import { useState } from 'react'
 
 const NAV_LINKS = [
-  { label: 'Каталог', href: '/catalog' },
+  { label: 'Каталог', href: '/' },
+  { label: 'Избранное', href: '/favorites' },
   { label: 'Сравнение', href: '/compare' },
-  { label: 'Рейтинги', href: '/ratings' },
   { label: 'О проекте', href: '/about' },
 ]
 
@@ -17,10 +18,23 @@ const LANGUAGES = [
 ]
 
 export function Header() {
+  const router = useRouter()
   const [langOpen, setLangOpen] = useState(false)
   const [currentLang, setCurrentLang] = useState('ru')
+  const [query, setQuery] = useState('')
 
   const activeLang = LANGUAGES.find(l => l.code === currentLang)!
+
+  function handleSearch(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== 'Enter') return
+    const trimmed = query.trim()
+    router.push(trimmed ? `/?q=${encodeURIComponent(trimmed)}` : '/')
+  }
+
+  function clearSearch() {
+    setQuery('')
+    router.push('/')
+  }
 
   return (
     <header className="w-full bg-white border-b border-border sticky top-0 z-50">
@@ -45,14 +59,22 @@ export function Header() {
           ))}
         </nav>
 
-        {/* Поиск */}
+        {/* Поиск — Enter уводит на главную с ?q=..., CityGrid фильтрует города по названию */}
         <div className="flex-1 max-w-xs hidden md:flex items-center gap-2 bg-porcelain rounded-lg px-3 py-1.5">
           <Search size={15} className="text-steel shrink-0" />
           <input
             type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={handleSearch}
             placeholder="Найти город..."
             className="bg-transparent text-sm text-ink placeholder:text-steel outline-none w-full"
           />
+          {query && (
+            <button onClick={clearSearch} className="text-steel hover:text-ink transition-colors shrink-0">
+              <X size={14} />
+            </button>
+          )}
         </div>
 
         {/* Правая часть */}
@@ -60,7 +82,7 @@ export function Header() {
 
           {/* Telegram */}
            <a
-            href="https://t.me/"
+            href="https://t.me/julia_serganina"
             target="_blank"
             rel="noopener noreferrer"
             className="p-2 rounded-lg text-steel hover:text-brand hover:bg-porcelain transition-colors"
