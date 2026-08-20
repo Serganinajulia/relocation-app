@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { SidebarFilter } from '@/components/filters/SidebarFilter'
 import { CityCard } from '@/components/city/CityCard'
@@ -19,6 +19,12 @@ type Props = {
 export function CityGrid({ cities, reference }: Props) {
   const [filterCollapsed, setFilterCollapsed] = useState(false)
   const searchParams = useSearchParams()
+  const [visibleCount, setVisibleCount] = useState(12)
+
+  // Любое изменение фильтров/поиска/сортировки — начинаем показ заново с первых 12
+  useEffect(() => {
+    setVisibleCount(12)
+  }, [searchParams.toString()])
 
   const selectedCustomId = useLifestyleStore(s => s.selectedCustomId)
   const customLifestyles = useLifestyleStore(s => s.customLifestyles)
@@ -105,7 +111,7 @@ export function CityGrid({ cities, reference }: Props) {
         <div className={`grid gap-4 grid-cols-1 lg:grid-cols-2 ${
           filterCollapsed ? 'xl:grid-cols-3' : 'xl:grid-cols-2'
         }`}>
-          {sortedCities.map(({ city, result }) => (
+          {sortedCities.slice(0, visibleCount).map(({ city, result }) => (
             <CityCard
               key={city.id}
               city={city}
@@ -114,6 +120,17 @@ export function CityGrid({ cities, reference }: Props) {
             />
           ))}
         </div>
+
+        {sortedCities.length > visibleCount && (
+          <div className="flex justify-center mt-6">
+            <button
+              onClick={() => setVisibleCount(v => v + 12)}
+              className="px-6 h-11 rounded-full border border-brand text-brand text-sm font-medium hover:bg-porcelain transition-colors"
+            >
+              Показать ещё {Math.min(12, sortedCities.length - visibleCount)} городов
+            </button>
+          </div>
+        )}
       </div>
 
     </div>

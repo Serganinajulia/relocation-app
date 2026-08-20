@@ -8,6 +8,8 @@ import { type LifeStyle, type LifestyleOverrides, resolveOverrides } from '@/lib
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { CounterField, ServiceModeField, CheckboxField, LifestyleLevelField, HousingLevelField } from '@/components/filters/CustomLifestyleFields'
 import { useLifestyleStore } from '@/lib/store/lifestyleStore'
+import { ExtendedFiltersPanel } from '@/components/filters/ExtendedFiltersPanel'
+import type { FilterReferenceData } from '@/lib/filters/types'
 
 type AgeGroup = 'baby' | 'toddler' | 'school'
 
@@ -67,7 +69,11 @@ const LIFESTYLE_OPTIONS: { value: LifeStyle; label: string }[] = [
   { value: 'comfort_plus', label: 'Комфорт+' },
 ]
 
-export function QuickFilter() {
+type Props = {
+  reference: FilterReferenceData
+}
+
+export function QuickFilter({ reference }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -342,8 +348,8 @@ const applyFilter = useCallback((overrides: Partial<{
   return (
     <div className="bg-white border-b border-border">
 
-      {/* ===== ДЕСКТОП (lg+) ===== */}
-      <div className="hidden lg:block">
+      {/* ===== ДЕСКТОП (xl+) ===== */}
+      <div className="hidden xl:block">
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-wrap items-end gap-3">
 
@@ -507,7 +513,6 @@ const applyFilter = useCallback((overrides: Partial<{
                 }}
                 onBlur={() => applyFilter({ budget })}
                 className="w-16 text-sm font-medium text-ink outline-none text-center bg-transparent"
-                placeholder="0"
               />
               <span className="text-steel text-sm shrink-0">$/мес</span>
               <button
@@ -536,8 +541,8 @@ const applyFilter = useCallback((overrides: Partial<{
         </div>
       </div>
 
-      {/* ===== МОБИЛКА / ПЛАНШЕТ / МАЛЕНЬКИЙ ПК (до lg) ===== */}
-      <div className="lg:hidden flex flex-col gap-3 bg-porcelain px-5 py-5">
+      {/* ===== МОБИЛКА / ПЛАНШЕТ / MD-ДИАПАЗОН (до xl) ===== */}
+      <div className="xl:hidden flex flex-col gap-3 bg-porcelain px-5 py-5">
         <div className="container flex flex-col gap-3 mx-auto bg-white rounded-2xl px-10 py-10 shadow-sm">
           {/* Кто переезжает */}
           <div ref={mobileTravelersRef}>
@@ -744,7 +749,6 @@ const applyFilter = useCallback((overrides: Partial<{
                   setMobileBudget(val)
                 }}
                 className="w-14 text-sm font-medium text-ink outline-none text-center bg-transparent"
-                placeholder="0"
               />
               <span className="text-sm shrink-0 text-steel">$/мес</span>
               <button
@@ -777,25 +781,34 @@ const applyFilter = useCallback((overrides: Partial<{
         </div>
       </div>
 
-      {/* Fullscreen модал */}
+      {/* Модалка расширенных фильтров — центрированная карточка с максимальной шириной (под мобильный
+          размер), не растягивается на всю ширину на md/sm экранах, затемнённый фон вокруг */}
       {mobileFiltersOpen && (
-        <div className="fixed inset-0 bg-white z-50 flex flex-col">
-          <div className="flex items-center justify-between p-4 border-b border-border">
-            <h2 className="text-lg font-semibold text-ink">Фильтры</h2>
-            <button onClick={() => setMobileFiltersOpen(false)} className="text-steel hover:text-ink transition-colors">
-              <X size={22} />
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto p-4">
-            <p className="text-steel text-sm">Расширенный фильтр появится здесь</p>
-          </div>
-          <div className="flex gap-3 p-4 border-t border-border">
-            <button onClick={() => { handleReset(); setMobileFiltersOpen(false) }} className="flex-1 h-11 rounded-xl border border-border text-sm text-steel hover:border-warning hover:text-warning transition-colors">
-              Сбросить
-            </button>
-            <button onClick={() => setMobileFiltersOpen(false)} className="flex-1 h-11 rounded-xl bg-brand text-white text-sm font-medium hover:bg-positive transition-colors">
-              Применить
-            </button>
+        <div
+          className="fixed inset-0 bg-ink/40 z-50 flex items-center justify-center p-4"
+          onClick={() => setMobileFiltersOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden shadow-xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b border-border shrink-0">
+              <h2 className="text-lg font-semibold text-ink">Фильтры</h2>
+              <button onClick={() => setMobileFiltersOpen(false)} className="text-steel hover:text-ink transition-colors">
+                <X size={22} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              <ExtendedFiltersPanel reference={reference} />
+            </div>
+            <div className="flex gap-3 p-6 border-t border-border shrink-0">
+              <button onClick={() => { handleReset(); setMobileFiltersOpen(false) }} className="flex-1 h-11 rounded-xl border border-border text-sm text-steel hover:border-warning hover:text-warning transition-colors">
+                Сбросить
+              </button>
+              <button onClick={() => setMobileFiltersOpen(false)} className="flex-1 h-11 rounded-xl bg-brand text-white text-sm font-medium hover:bg-positive transition-colors">
+                Применить
+              </button>
+            </div>
           </div>
         </div>
       )}

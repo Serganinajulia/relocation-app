@@ -95,7 +95,7 @@ export function matchesExtendedFilters(city: any, filters: ExtendedFilters, trav
     if (country.citizenship_years > filters.citizenshipYearsMax) return false
   }
 
-  if (filters.taxType && country?.remote_income_tax_type !== filters.taxType) return false
+  if (filters.taxTypes.length && !filters.taxTypes.includes(country?.remote_income_tax_type)) return false
 
   if (filters.freeHealthcare && country?.healthcare_access !== 'free') return false
   if (filters.freeKindergarten && country?.kindergarten_is_free !== true) return false

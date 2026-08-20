@@ -11,14 +11,17 @@ export function MultiSelectDropdown({
   groups,
   selected,
   onChange,
+  searchable,
 }: {
   label: string
   options?: Option[]
   groups?: { id: number; label: string; options: Option[] }[]
   selected: (number | string)[]
   onChange: (next: (number | string)[]) => void
+  searchable?: boolean
 }) {
   const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -34,6 +37,14 @@ export function MultiSelectDropdown({
   }
 
   const summary = selected.length ? `${label} (${selected.length})` : label
+  const q = query.trim().toLowerCase()
+  const matches = (text: string) => !searchable || !q || text.toLowerCase().includes(q)
+
+  const filteredOptions = (options ?? []).filter(opt => matches(opt.label))
+  const filteredGroups = (groups ?? [])
+    .map(g => ({ ...g, options: g.options.filter(opt => matches(opt.label)) }))
+    .filter(g => g.options.length > 0)
+  const nothingFound = searchable && q && filteredOptions.length === 0 && filteredGroups.length === 0
 
   return (
     <div className="relative" ref={ref}>
@@ -48,8 +59,18 @@ export function MultiSelectDropdown({
       </button>
       {open && (
         <div className="absolute top-full left-0 mt-1 w-full max-h-64 overflow-y-auto bg-white border border-border rounded-lg shadow-lg p-2 z-50">
+          {searchable && (
+            <input
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Поиск..."
+              autoFocus
+              className="w-full h-8 px-2 mb-2 rounded-lg border border-border text-sm text-ink outline-none focus:border-brand sticky top-0 bg-white"
+            />
+          )}
           {groups
-            ? groups.map(g => (
+            ? filteredGroups.map(g => (
                 <div key={g.id} className="mb-2 last:mb-0">
                   <p className="text-xs text-steel font-medium px-2 py-1">{g.label}</p>
                   {g.options.map(opt => (
@@ -60,12 +81,13 @@ export function MultiSelectDropdown({
                   ))}
                 </div>
               ))
-            : (options ?? []).map(opt => (
+            : filteredOptions.map(opt => (
                 <label key={opt.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-porcelain cursor-pointer text-sm text-ink">
                   <input type="checkbox" checked={selected.includes(opt.id)} onChange={() => toggle(opt.id)} className="accent-brand" />
                   {opt.label}
                 </label>
               ))}
+          {nothingFound && <p className="px-2 py-1.5 text-sm text-steel">Ничего не найдено</p>}
         </div>
       )}
     </div>
@@ -205,7 +227,7 @@ export function PillsSelect({
   options: { value: number | null; text: string }[]
 }) {
   return (
-    <div>
+    <div className="my-2">
       <p className="text-sm text-steel mb-1.5">{label}</p>
       <div className="flex flex-wrap gap-1.5">
         {options.map(opt => (
@@ -214,6 +236,41 @@ export function PillsSelect({
             onClick={() => onChange(opt.value)}
             className={`px-2.5 h-7 rounded-full text-sm border transition-colors ${
               value === opt.value ? 'bg-brand border-brand text-white' : 'border-border text-steel hover:border-brand hover:text-brand'
+            }`}
+          >
+            {opt.text}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function PillsMultiSelect({
+  label,
+  selected,
+  onChange,
+  options,
+}: {
+  label: string
+  selected: string[]
+  onChange: (next: string[]) => void
+  options: { value: string; text: string }[]
+}) {
+  function toggle(value: string) {
+    onChange(selected.includes(value) ? selected.filter(v => v !== value) : [...selected, value])
+  }
+
+  return (
+    <div className="my-2">
+      <p className="text-sm text-steel mb-1.5">{label}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map(opt => (
+          <button
+            key={opt.value}
+            onClick={() => toggle(opt.value)}
+            className={`px-2.5 h-7 rounded-full text-sm border transition-colors ${
+              selected.includes(opt.value) ? 'bg-brand border-brand text-white' : 'border-border text-steel hover:border-brand hover:text-brand'
             }`}
           >
             {opt.text}

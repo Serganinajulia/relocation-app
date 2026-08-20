@@ -15,8 +15,8 @@ export type ExtendedFilters = {
   visaTypes: string[]
   residencyTypeIds: number[]
   incomeFits: boolean                       // beta — UI есть, логика сравнения дохода будет добавлена отдельно
-  citizenshipYearsMax: number | null
-  taxType: string | null
+  citizenshipYearsMax: number | null        // накопительный порог: "до X лет", одиночный выбор
+  taxTypes: string[]                        // независимые значения: 'none' | 'reduced' | 'full', множественный выбор
   healthcareLevel: number | null             // 0-100, минимальный healthcare_quality_index, null = Любой
   freeHealthcare: boolean
   freeKindergarten: boolean
@@ -41,7 +41,7 @@ export const EMPTY_EXTENDED_FILTERS: ExtendedFilters = {
   residencyTypeIds: [],
   incomeFits: false,
   citizenshipYearsMax: null,
-  taxType: null,
+  taxTypes: [],
   healthcareLevel: null,
   freeHealthcare: false,
   freeKindergarten: false,

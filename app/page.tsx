@@ -20,7 +20,7 @@ export default async function HomePage() {
         description="Считай стоимость жизни, сравнивай климат, безопасность и визовые условия. Фильтруй по бюджету и находи свой идеальный вариант."
       />
       <Suspense fallback={null}>
-        <QuickFilter />
+        <QuickFilter reference={reference} />
       </Suspense>
       <div className="container mx-auto px-4 py-8">
         <Suspense fallback={null}>

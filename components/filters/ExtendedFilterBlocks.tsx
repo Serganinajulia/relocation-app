@@ -6,6 +6,7 @@ import {
   SingleSelectDropdown,
   ThresholdSlider,
   PillsSelect,
+  PillsMultiSelect,
   TempRangeInput,
   CheckboxRow,
 } from '@/components/filters/FilterPrimitives'
@@ -32,12 +33,14 @@ export function CountriesLanguagesBlock({ filters, update, reference }: BlockPro
         groups={reference.clusters.map(c => ({ id: c.id, label: c.label, options: c.countries }))}
         selected={filters.countryIds}
         onChange={next => update('countryIds', next as string[])}
+        searchable
       />
       <MultiSelectDropdown
         label="Официальные языки"
         options={reference.languages}
         selected={filters.languageIds}
         onChange={next => update('languageIds', next as number[])}
+        searchable
       />
       <SingleSelectDropdown
         label="Английский"
@@ -139,10 +142,10 @@ const CITIZENSHIP_PILLS: { value: number | null; text: string }[] = [
   { value: 999, text: 'От 10 лет' },
 ]
 
-const TAX_OPTIONS = [
-  { id: 'none', label: 'Не облагает' },
-  { id: 'reduced', label: 'Льготный' },
-  { id: 'full', label: 'Полный' },
+const TAX_PILL_OPTIONS = [
+  { value: 'none', text: 'Не облагает' },
+  { value: 'reduced', text: 'Льготный' },
+  { value: 'full', text: 'Полный' },
 ]
 
 export function LegalizationBlock({ filters, update, reference }: BlockProps) {
@@ -160,6 +163,7 @@ export function LegalizationBlock({ filters, update, reference }: BlockProps) {
         options={reference.residencyTypes}
         selected={filters.residencyTypeIds}
         onChange={next => update('residencyTypeIds', next as number[])}
+        searchable
       />
 
       {/* Доход семьи подходит под наш бюджет — закомментировано до реализации логики сравнения
@@ -185,11 +189,11 @@ export function LegalizationBlock({ filters, update, reference }: BlockProps) {
         onChange={next => update('citizenshipYearsMax', next)}
         options={CITIZENSHIP_PILLS}
       />
-      <SingleSelectDropdown
+      <PillsMultiSelect
         label="Налоги на удалённый доход"
-        options={TAX_OPTIONS}
-        value={filters.taxType}
-        onChange={next => update('taxType', next)}
+        selected={filters.taxTypes}
+        onChange={next => update('taxTypes', next)}
+        options={TAX_PILL_OPTIONS}
       />
     </div>
   )
